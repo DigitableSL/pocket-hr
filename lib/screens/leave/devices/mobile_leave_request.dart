@@ -239,8 +239,11 @@ class _MobileLeaveRequestState extends State<MobileLeaveRequest>
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
       ),
       child: Scaffold(
         resizeToAvoidBottomInset: false,

@@ -8,6 +8,7 @@ import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 import 'package:vibration/vibration.dart';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 
 class QrScannerPage extends StatefulWidget {
   final String? expectedValue;
@@ -54,6 +55,9 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SecurityService.verifyDeviceSecurity(context: context);
+    });
     _satelliteAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -114,6 +118,10 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
 
   void _handleNewLocation(Position position) {
     if (!mounted) return;
+    if (position.isMocked) {
+      SecurityService.verifyPosition(position, context: context);
+      return;
+    }
     debugPrint('[Location] New coordinate: lat=${position.latitude}, lng=${position.longitude}, accuracy=${position.accuracy}m');
     widget.onLocationUpdated?.call(position);
     setState(() {
@@ -302,6 +310,16 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
               _message = null;
             });
           });
+          return;
+        }
+
+        // Verify device security and mock location
+        final isClean = await SecurityService.verifyDeviceSecurity(
+          currentPosition: position,
+          context: context,
+        );
+        if (!isClean) {
+          _controller.stop();
           return;
         }
 

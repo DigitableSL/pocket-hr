@@ -1103,7 +1103,12 @@ class _MobileHomeState extends State<MobileHome> with TickerProviderStateMixin {
     return CustomScrollView(
       slivers: <Widget>[
         SliverAppBar(
-          systemOverlayStyle: SystemUiOverlayStyle.light,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemStatusBarContrastEnforced: false,
+          ),
           snap: false,
           pinned: true,
           floating: false,

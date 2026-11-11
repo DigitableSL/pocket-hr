@@ -1205,4 +1205,12 @@ class AppLocalizationsSi extends AppLocalizations {
   @override
   String get todoDirectManagerApprovalRequired =>
       'මෙම ඉල්ලීම අනුමත කිරීමට ඔබ අදාළ සේවකයාගේ සෘජු කළමනාකරු විය යුතුය.';
+
+  @override
+  String get developerModeDetectedError =>
+      'Developer Options ක්‍රියාත්මක කර ඇත. කරුණාකර දුරකථන සැකසුම් වෙත ගොස් එය අක්‍රිය කර නැවත ලොග් වන්න.';
+
+  @override
+  String get mockLocationDetectedError =>
+      'ව්‍යාජ ස්ථානයක් (Mock Location) හඳුනාගෙන ඇත. කරුණාකර එය අක්‍රිය කර නැවත ලොග් වන්න.';
 }

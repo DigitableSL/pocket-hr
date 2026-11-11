@@ -12,6 +12,8 @@ import 'package:cn_pocket_hr/screens/location/location_permission_dialog.dart';
 import 'package:cn_pocket_hr/providers/locale_provider.dart';
 import 'package:provider/provider.dart';
 
+import 'package:cn_pocket_hr/services/security_service.dart';
+
 class MobileSplash extends StatefulWidget {
   const MobileSplash({Key? key}) : super(key: key);
 
@@ -70,6 +72,10 @@ class _MobileSplashState extends State<MobileSplash>
   var saveLang = null;
 
   navigationPage() async {
+    // Check developer mode and mock location before doing anything else
+    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+    if (!isSecure) return;
+
     await storage.ready;
     saveLang = storage.getItem('lang');
     setLanguage(saveLang);

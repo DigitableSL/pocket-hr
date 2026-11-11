@@ -7,6 +7,8 @@ import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:cn_pocket_hr/helpers/time_validator.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
+import 'package:cn_pocket_hr/helpers/session_validator.dart';
 
 class LogoutHelper {
   static Future<void> logout(BuildContext context) async {
@@ -98,8 +100,10 @@ class LogoutHelper {
     } catch (_) {}
     await FCMService.reset();
 
-    // Reset the time validation logging out flag
+    // Reset the time validation, security service, and session flags
     TimeValidator.reset();
+    SecurityService.reset();
+    SessionValidator.reset();
 
     // Show error toast message
     try {

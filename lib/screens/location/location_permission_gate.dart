@@ -5,6 +5,7 @@ import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 
 /// A lightweight startup gate that requests location permission before showing
 /// the main app UI.
@@ -36,6 +37,9 @@ class _LocationPermissionGateState extends State<LocationPermissionGate> {
   }
 
   Future<void> _ensurePermission() async {
+    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+    if (!isSecure) return;
+
     setState(() {
       _busy = true;
       _error = null;

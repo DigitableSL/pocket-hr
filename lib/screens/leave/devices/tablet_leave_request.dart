@@ -150,8 +150,11 @@ class _TabletLeaveRequestState extends State<TabletLeaveRequest>
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
       ),
       child: Scaffold(
         resizeToAvoidBottomInset: false,

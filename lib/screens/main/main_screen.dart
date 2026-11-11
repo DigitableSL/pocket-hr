@@ -14,6 +14,7 @@ import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/helpers/design_config.dart';
 import 'package:cn_pocket_hr/helpers/liquid_side_menu.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 import 'package:line_icons/line_icons.dart';
 
 class HRMain extends StatefulWidget {
@@ -26,7 +27,7 @@ class HRMain extends StatefulWidget {
   State<HRMain> createState() => _HRMainState();
 }
 
-class _HRMainState extends State<HRMain> {
+class _HRMainState extends State<HRMain> with WidgetsBindingObserver {
   int selectedIndex = 0;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -36,6 +37,7 @@ class _HRMainState extends State<HRMain> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     fragments = [
       HRHome(),
@@ -51,9 +53,23 @@ class _HRMainState extends State<HRMain> {
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await SecurityService.verifyDeviceSecurity(context: context);
       await FCMService.initialize();
       FCMService.sendTokenToBackend();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      SecurityService.verifyDeviceSecurity(context: context);
+    }
   }
 
   void updateTabSelection(int index) {
@@ -68,8 +84,15 @@ class _HRMainState extends State<HRMain> {
       onWillPop: () async => false,
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
           statusBarIconBrightness:
               Platform.isIOS ? Brightness.light : Brightness.dark,
+          statusBarBrightness:
+              Platform.isIOS ? Brightness.dark : Brightness.light,
+          systemStatusBarContrastEnforced: false,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+          systemNavigationBarContrastEnforced: false,
         ),
         child: LiquidSideMenu(
           menu: DesignConfig.drawerContent(_scaffoldKey, context),

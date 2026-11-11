@@ -42,9 +42,13 @@ class _MobileIntroState extends State<MobileIntro> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarBrightness: Brightness.dark,
         statusBarIconBrightness: Brightness.light,
+        systemStatusBarContrastEnforced: false,
         systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
       ),
       child: Scaffold(
         body: Container(

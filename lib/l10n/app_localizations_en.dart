@@ -1203,4 +1203,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get todoDirectManagerApprovalRequired =>
       'You must be the direct manager of this employee to approve this request.';
+
+  @override
+  String get developerModeDetectedError =>
+      'Developer options / USB debugging detected. Please turn off Developer Options in your device settings to use this app.';
+
+  @override
+  String get mockLocationDetectedError =>
+      'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.';
 }

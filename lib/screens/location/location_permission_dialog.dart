@@ -5,6 +5,7 @@ import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 
 /// Shows a modal dialog to request location permission.
 ///
@@ -13,6 +14,9 @@ import 'package:geolocator/geolocator.dart';
 /// - Returns `false` when the user dismisses the dialog or permission isn't granted.
 Future<bool> showLocationPermissionDialog(BuildContext context) async {
   if (!context.mounted) return false;
+
+  final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+  if (!isSecure) return false;
 
   // First, try the system dialog
   final permission = await _requestSystemPermission();

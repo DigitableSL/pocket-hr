@@ -1,12 +1,34 @@
 import Flutter
 import UIKit
+import CoreLocation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
+  private let securityChannelName = "asia.ceynet.pocket/security"
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
+    let securityChannel = FlutterMethodChannel(name: securityChannelName,
+                                              binaryMessenger: controller.binaryMessenger)
+
+    securityChannel.setMethodCallHandler({ [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+      guard let self = self else {
+        result(false)
+        return
+      }
+
+      if call.method == "isDevModeEnabled" {
+        result(self.isDevModeEnabled())
+      } else if call.method == "isMockLocation" {
+        result(self.isMockLocation())
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    })
+
     GeneratedPluginRegistrant.register(with: self)
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
@@ -14,5 +36,28 @@ import UIKit
     application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
-}
 
+  private func isDevModeEnabled() -> Bool {
+    return isDebuggerAttached()
+  }
+
+  private func isDebuggerAttached() -> Bool {
+    var info = kinfo_proc()
+    var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+    var size = MemoryLayout<kinfo_proc>.stride
+    let junk = sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0)
+    if junk != 0 {
+      return false
+    }
+    return (info.kp_proc.p_flag & P_TRACED) != 0
+  }
+
+  private func isMockLocation() -> Bool {
+    let locManager = CLLocationManager()
+    guard let location = locManager.location else { return false }
+    if #available(iOS 15.0, *) {
+      return location.sourceInformation?.isSimulatedBySoftware ?? false
+    }
+    return false
+  }
+}

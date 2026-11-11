@@ -2379,6 +2379,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You must be the direct manager of this employee to approve this request.'**
   String get todoDirectManagerApprovalRequired;
+
+  /// No description provided for @developerModeDetectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer options / USB debugging detected. Please turn off Developer Options in your device settings to use this app.'**
+  String get developerModeDetectedError;
+
+  /// No description provided for @mockLocationDetectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.'**
+  String get mockLocationDetectedError;
 }
 
 class _AppLocalizationsDelegate
