@@ -38,7 +38,7 @@ class SecurityService {
       try {
         final bool isDevMode =
             await _channel.invokeMethod<bool>('isDevModeEnabled') ?? false;
-        if (isDevMode) {
+        if (isDevMode && !kDebugMode) {
           await _handleViolation(
             isDevMode: true,
             fallbackMessage:

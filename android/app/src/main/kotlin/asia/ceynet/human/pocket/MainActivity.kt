@@ -1,6 +1,7 @@
 package asia.ceynet.human.pocket
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
@@ -62,8 +63,14 @@ class MainActivity: FlutterActivity() {
 
     /**
      * Checks if Developer Options or USB Debugging (ADB) is enabled on Android.
+     * Bypassed automatically in debug builds to prevent developer lockout.
      */
     private fun isDevModeEnabled(): Boolean {
+        val isDebuggable = 0 != (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)
+        if (isDebuggable) {
+            return false
+        }
+
         return try {
             val devMode = Settings.Global.getInt(
                 contentResolver,
@@ -83,6 +90,8 @@ class MainActivity: FlutterActivity() {
 
     /**
      * Checks if the device's last known location is from a mock provider.
+     * Only considers recent fixes (within 15 minutes) to avoid false positives
+     * from historical stale cached locations.
      */
     private fun isMockLocation(): Boolean {
         return try {
@@ -91,6 +100,10 @@ class MainActivity: FlutterActivity() {
             for (provider in providers) {
                 try {
                     val location = locationManager.getLastKnownLocation(provider) ?: continue
+                    val age = System.currentTimeMillis() - location.time
+                    if (age > 15 * 60 * 1000) {
+                        continue
+                    }
                     if (isLocationMocked(location)) {
                         return true
                     }

@@ -11,61 +11,70 @@ class SessionValidator {
   static final LocalStorage _storage = LocalStorage('pocketHR');
 
   /// Validates whether the API response indicates an expired session or invalid token.
-  /// If expired, automatically forces a logout and displays a localized error message.
+  /// If expired and unrecoverable, automatically forces a logout and displays a localized error message.
   static void validate(http.Response response, {Uri? url}) {
     if (_isLoggingOut) return;
 
     try {
       final statusCode = response.statusCode;
-      final body = response.body;
 
+      // Only investigate 4xx / 5xx error responses
+      if (statusCode < 400) return;
+
+      final urlStr = url?.toString().toLowerCase() ?? '';
+      final isTokenEndpoint = urlStr.contains('/token') || urlStr.contains('accounts.');
+      final isAuthFlowEndpoint = urlStr.contains('/sso/mobile-start') ||
+          urlStr.contains('/sso/mobile-callback');
+
+      // Do not interfere with initial SSO login flow
+      if (isAuthFlowEndpoint) return;
+
+      final body = response.body;
       bool isSessionExpired = false;
 
-      // 1. Check HTTP status code (401 Unauthorized, 419 Authentication Timeout)
-      if (statusCode == 401 || statusCode == 419) {
+      // 1. If the token refresh endpoint itself failed (400 Bad Request, 401 Unauthorized),
+      // the refresh token is invalid or expired.
+      if (isTokenEndpoint && (statusCode == 400 || statusCode == 401 || statusCode == 419)) {
         isSessionExpired = true;
       }
 
-      // 2. Check response body for session or token expiration messages
-      if (!isSessionExpired && body.isNotEmpty) {
-        final lowerBody = body.toLowerCase();
-        if (lowerBody.contains('session expired') ||
-            lowerBody.contains('session has expired') ||
-            lowerBody.contains('token expired') ||
-            lowerBody.contains('token has expired') ||
-            lowerBody.contains('token is invalid') ||
-            lowerBody.contains('jwt expired') ||
-            lowerBody.contains('session_expired') ||
-            lowerBody.contains('token_expired') ||
-            lowerBody.contains('unauthenticated') ||
-            lowerBody.contains('invalid_grant')) {
-          isSessionExpired = true;
+      // 2. For general endpoints, check for 401 Unauthorized or 419 Session Timeout
+      if (!isSessionExpired && (statusCode == 401 || statusCode == 419)) {
+        String? errorMsg;
+        try {
+          final decoded = jsonDecode(body);
+          if (decoded is Map) {
+            errorMsg = (decoded['message'] ??
+                    decoded['error'] ??
+                    decoded['error_description'] ??
+                    decoded['msg'] ??
+                    '')
+                .toString()
+                .toLowerCase();
+          }
+        } catch (_) {}
+
+        if (errorMsg != null) {
+          if (errorMsg.contains('session expired') ||
+              errorMsg.contains('session has expired') ||
+              errorMsg.contains('token expired') ||
+              errorMsg.contains('invalid_grant') ||
+              errorMsg.contains('session_expired') ||
+              errorMsg.contains('token_expired') ||
+              errorMsg.contains('token is invalid') ||
+              errorMsg.contains('unauthenticated') ||
+              errorMsg == 'unauthorized') {
+            isSessionExpired = true;
+          }
         } else {
-          try {
-            final decoded = jsonDecode(body);
-            if (decoded is Map) {
-              final msg = (decoded['message'] ??
-                      decoded['error'] ??
-                      decoded['error_description'] ??
-                      decoded['msg'] ??
-                      '')
-                  .toString()
-                  .toLowerCase();
-              if (msg.contains('session expired') ||
-                  msg.contains('token expired') ||
-                  msg.contains('jwt expired') ||
-                  msg.contains('unauthenticated') ||
-                  msg == 'unauthorized') {
-                isSessionExpired = true;
-              }
-            }
-          } catch (_) {}
+          // Non-JSON 401/419
+          isSessionExpired = true;
         }
       }
 
       if (!isSessionExpired) return;
 
-      // Check if user is currently authenticated to avoid false logouts on login screen
+      // Check user session and avoid interrupting silent token refresh
       Future.microtask(() async {
         if (_isLoggingOut) return;
 
@@ -74,6 +83,16 @@ class SessionValidator {
           final token = _storage.getItem('access_token')?.toString();
           if (token == null || token.trim().isEmpty) {
             // User is not logged in yet (e.g. invalid credentials on login screen)
+            return;
+          }
+
+          // If this is a 401 on a normal endpoint and a refresh_token is present,
+          // do NOT kill the session immediately; allow APIService to refresh it silently.
+          // Only force logout if the token endpoint itself failed, or if no refresh token exists.
+          final refreshToken = _storage.getItem('refresh_token')?.toString();
+          if (!isTokenEndpoint && (refreshToken != null && refreshToken.trim().isNotEmpty)) {
+            debugPrint(
+                '[SessionValidator] 401 received on regular endpoint ($url). Refresh token is available; deferring to silent refresh.');
             return;
           }
         } catch (_) {}

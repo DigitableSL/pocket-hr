@@ -17,6 +17,7 @@ import 'package:cn_pocket_hr/services/device_details_service.dart';
 import 'package:cn_pocket_hr/screens/login/otp_page.dart';
 import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 
 class MobileLogin extends StatefulWidget {
   const MobileLogin({Key? key}) : super(key: key);
@@ -440,6 +441,11 @@ class _MobileLoginState extends State<MobileLogin>
     final conn = Provider.of<ConnectionProvider>(context, listen: false);
     if (!conn.isOnline) {
       apiService.showToast(AppLocalizations.of(context)!.noInternetConnection);
+      return;
+    }
+
+    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+    if (!isSecure) {
       return;
     }
     setState(() {

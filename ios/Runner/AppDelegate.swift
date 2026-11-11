@@ -10,35 +10,43 @@ import CoreLocation
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
-    let securityChannel = FlutterMethodChannel(name: securityChannelName,
-                                              binaryMessenger: controller.binaryMessenger)
-
-    securityChannel.setMethodCallHandler({ [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
-      guard let self = self else {
-        result(false)
-        return
-      }
-
-      if call.method == "isDevModeEnabled" {
-        result(self.isDevModeEnabled())
-      } else if call.method == "isMockLocation" {
-        result(self.isMockLocation())
-      } else {
-        result(FlutterMethodNotImplemented)
-      }
-    })
-
     GeneratedPluginRegistrant.register(with: self)
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     }
     application.registerForRemoteNotifications()
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    let appLaunched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let securityChannel = FlutterMethodChannel(name: securityChannelName,
+                                                binaryMessenger: controller.binaryMessenger)
+
+      securityChannel.setMethodCallHandler({ [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
+        guard let self = self else {
+          result(false)
+          return
+        }
+
+        if call.method == "isDevModeEnabled" {
+          result(self.isDevModeEnabled())
+        } else if call.method == "isMockLocation" {
+          result(self.isMockLocation())
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      })
+    }
+
+    return appLaunched
   }
 
   private func isDevModeEnabled() -> Bool {
+    #if DEBUG
+    return false
+    #else
     return isDebuggerAttached()
+    #endif
   }
 
   private func isDebuggerAttached() -> Bool {
