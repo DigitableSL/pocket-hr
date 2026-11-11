@@ -7,37 +7,55 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
 
-/// Shows a modal dialog to request location permission.
+/// Shows a modal dialog to request location permission and ensure GPS services
+/// and device security (Auto Date/Time, No Mock GPS, No Dev Mode) are valid.
 ///
 /// Contract:
-/// - Returns `true` when permission is granted.
-/// - Returns `false` when the user dismisses the dialog or permission isn't granted.
-Future<bool> showLocationPermissionDialog(BuildContext context) async {
+/// - Returns `true` when permission is granted, GPS is enabled, and device security passes.
+/// - Returns `false` when the user dismisses the dialog, permission isn't granted, or security fails.
+Future<bool> showLocationPermissionDialog(
+  BuildContext context, {
+  bool navigateToLogin = true,
+}) async {
   if (!context.mounted) return false;
 
-  final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+  final isSecure = await SecurityService.verifyDeviceSecurity(
+    context: context,
+    navigateToLogin: navigateToLogin,
+  );
   if (!isSecure) return false;
 
   // First, try the system dialog
   final permission = await _requestSystemPermission();
-  
+
   final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  
+
   if ((permission == LocationPermission.whileInUse ||
-       permission == LocationPermission.always) &&
+          permission == LocationPermission.always) &&
       serviceEnabled) {
-    return true;
+    if (!context.mounted) return false;
+    return await SecurityService.verifyDeviceSecurity(
+      context: context,
+      navigateToLogin: navigateToLogin,
+    );
   }
-  
+
   // Only if system dialog was denied or location services are disabled, show custom dialog
   if (!context.mounted) return false;
-  
-  return (await showDialog<bool>(
+
+  final dialogResult = (await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => const _LocationPermissionDialog(),
       )) ==
       true;
+
+  if (!dialogResult || !context.mounted) return false;
+
+  return await SecurityService.verifyDeviceSecurity(
+    context: context,
+    navigateToLogin: navigateToLogin,
+  );
 }
 
 Future<LocationPermission> _requestSystemPermission() async {

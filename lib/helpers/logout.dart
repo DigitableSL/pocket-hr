@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -102,17 +103,12 @@ class LogoutHelper {
     // 🔥 STOP CONTINUOUS SECURITY TIMER
     SecurityService.stopContinuousMonitoring();
 
-    // 🔥 CLEAR FCM PENDING BUFFER & BADGE
+    // 🔥 CLEAR FCM PENDING BUFFER & BADGE (unawaited network reset so UI navigation is instant)
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('fcm_pending_notifications');
     } catch (_) {}
-    await FCMService.reset();
-
-    // Reset the time validation, security service, and session flags
-    TimeValidator.reset();
-    SecurityService.reset();
-    SessionValidator.reset();
+    unawaited(FCMService.reset());
 
     // Show error toast message
     try {
@@ -126,12 +122,25 @@ class LogoutHelper {
       );
     } catch (_) {}
 
-    final context = FCMService.navigatorKey.currentContext;
-    if (context == null || !context.mounted) return;
+    // 🔥 NAVIGATE LOGIN IMMEDIATELY
+    final navState = FCMService.navigatorKey.currentState;
+    if (navState != null) {
+      navState.pushNamedAndRemoveUntil(HRLogin.routeName, (route) => false);
+    } else {
+      final context = FCMService.navigatorKey.currentContext;
+      if (context != null && context.mounted) {
+        Navigator.of(context, rootNavigator: true)
+            .pushNamedAndRemoveUntil(HRLogin.routeName, (route) => false);
+      }
+    }
 
-    // 🔥 NAVIGATE LOGIN
-    Navigator.of(context, rootNavigator: true)
-        .pushNamedAndRemoveUntil(HRLogin.routeName, (route) => false);
+    // Reset the time validation, security service, and session flags AFTER navigation
+    // with a brief debounce so any in-flight checks from disposed screens are ignored.
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      TimeValidator.reset();
+      SecurityService.reset();
+      SessionValidator.reset();
+    });
   }
 }
 

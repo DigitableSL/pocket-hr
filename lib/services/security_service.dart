@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cn_pocket_hr/helpers/logout.dart';
 import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 enum SecurityViolationType {
   devMode,
@@ -64,10 +66,13 @@ class SecurityService {
 
   /// Verifies device developer mode, automatic date & time, and mock location status.
   /// If a violation is detected, shows an error message and logs out the user.
+  /// Set [navigateToLogin] to `false` when calling from the Login screen itself to prevent
+  /// re-pushing the Login route in a loop.
   /// Returns `true` if device is clean and secure, `false` if violation was found.
   static Future<bool> verifyDeviceSecurity({
     Position? currentPosition,
     BuildContext? context,
+    bool navigateToLogin = true,
   }) async {
     if (_isEnforcing) return false;
     if (currentPosition != null) {
@@ -84,22 +89,24 @@ class SecurityService {
           fallbackMessage:
               'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.',
           context: context,
+          navigateToLogin: navigateToLogin,
         );
         return false;
       }
 
       if (positionToCheck.timestamp != null) {
-        final clockDrift = DateTime.now()
-            .difference(positionToCheck.timestamp!)
-            .inSeconds
-            .abs();
-        // Only check drift against fresh GPS fixes (within 5 minutes) or when device clock drifted away
-        if (clockDrift > 180) {
+        // A GPS satellite timestamp can never be in the future relative to true UTC time.
+        // If position.timestamp is >180s ahead of DateTime.now(), the device clock was rewound.
+        // (Avoid flagging past timestamps as violations since indoor fused locations can be cached >3m.)
+        final futureDriftSeconds =
+            positionToCheck.timestamp!.difference(DateTime.now()).inSeconds;
+        if (futureDriftSeconds > 180) {
           await _handleViolation(
             type: SecurityViolationType.autoTimeDisabled,
             fallbackMessage:
                 'Device time deviates from satellite network time. Please enable "Set time automatically" in settings.',
             context: context,
+            navigateToLogin: navigateToLogin,
           );
           return false;
         }
@@ -119,6 +126,7 @@ class SecurityService {
             fallbackMessage:
                 'Automatic Date & Time is disabled. Please enable "Set time automatically" in your device settings to use this app.',
             context: context,
+            navigateToLogin: navigateToLogin,
           );
           return false;
         }
@@ -132,6 +140,7 @@ class SecurityService {
             fallbackMessage:
                 'Developer options / USB debugging detected. Please turn off Developer Options in your device settings to use this app.',
             context: context,
+            navigateToLogin: navigateToLogin,
           );
           return false;
         }
@@ -145,6 +154,7 @@ class SecurityService {
             fallbackMessage:
                 'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.',
             context: context,
+            navigateToLogin: navigateToLogin,
           );
           return false;
         }
@@ -163,6 +173,7 @@ class SecurityService {
     Position position, {
     BuildContext? context,
   }) async {
+    if (_isEnforcing) return false;
     _lastKnownPosition = position;
 
     if (position.isMocked) {
@@ -176,9 +187,9 @@ class SecurityService {
     }
 
     if (position.timestamp != null) {
-      final clockDrift =
-          DateTime.now().difference(position.timestamp!).inSeconds.abs();
-      if (clockDrift > 180) {
+      final futureDriftSeconds =
+          position.timestamp!.difference(DateTime.now()).inSeconds;
+      if (futureDriftSeconds > 180) {
         await _handleViolation(
           type: SecurityViolationType.autoTimeDisabled,
           fallbackMessage:
@@ -196,6 +207,7 @@ class SecurityService {
     required SecurityViolationType type,
     required String fallbackMessage,
     BuildContext? context,
+    bool navigateToLogin = true,
   }) async {
     if (_isEnforcing) return;
     _isEnforcing = true;
@@ -224,7 +236,26 @@ class SecurityService {
     } catch (_) {}
 
     debugPrint(
-        '[SecurityService] Security violation detected (type=$type). Forcing logout: $errorMessage');
+        '[SecurityService] Security violation detected (type=$type, navigateToLogin=$navigateToLogin). Message: $errorMessage');
+
+    if (!navigateToLogin) {
+      // Already on the Login screen: clear any tokens and show toast without re-pushing HRLogin
+      await SecureTokenService.clearTokens();
+      try {
+        Fluttertoast.showToast(
+          msg: errorMessage,
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red.shade700,
+          textColor: Colors.white,
+          fontSize: 14.0,
+        );
+      } catch (_) {}
+      Future.delayed(const Duration(milliseconds: 800), () {
+        _isEnforcing = false;
+      });
+      return;
+    }
 
     Future.microtask(() async {
       await LogoutHelper.forceLogout(errorMessage: errorMessage);

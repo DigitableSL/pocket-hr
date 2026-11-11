@@ -54,9 +54,8 @@ class _HRMainState extends State<HRMain> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final isClean = await SecurityService.verifyDeviceSecurity(context: context);
-      if (isClean) {
-        SecurityService.startContinuousMonitoring();
-      }
+      if (!isClean) return;
+      SecurityService.startContinuousMonitoring();
       await FCMService.initialize();
       FCMService.sendTokenToBackend();
     });

@@ -60,21 +60,20 @@ class _TabletSplashState extends State<TabletSplash>
   var saveLang = null;
 
   navigationPage() async {
-    // Check developer mode, auto date/time, and mock location before doing anything else
-    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
-    if (!isSecure) return;
-
     await storage.ready;
     await SecureTokenService.ensureInitialized();
     saveLang = storage.getItem('lang');
     setLanguage(saveLang);
 
-    // Domex: require location permission before proceeding.
-    if (FlavorConfig.instance.tenant.toString().toLowerCase() == 'domex') {
-      if (!mounted) return;
-      final granted = await showLocationPermissionDialog(context);
-      if (granted != true) return;
-    }
+    // Check developer mode, auto date/time, and mock location before doing anything else
+    if (!mounted) return;
+    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+    if (!isSecure) return;
+
+    // Require location service & permission before initiating any API or background services
+    if (!mounted) return;
+    final granted = await showLocationPermissionDialog(context);
+    if (granted != true) return;
 
     // Require both saved tenant + access token
     final savedTenant = (storage.getItem('tenant') ?? '').toString();

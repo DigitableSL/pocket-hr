@@ -19,6 +19,7 @@ import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
 import 'package:cn_pocket_hr/services/secure_token_service.dart';
+import 'package:cn_pocket_hr/screens/location/location_permission_dialog.dart';
 
 class MobileLogin extends StatefulWidget {
   const MobileLogin({Key? key}) : super(key: key);
@@ -131,15 +132,36 @@ class _MobileLoginState extends State<MobileLogin>
 
   Future<void> _autoLoginIfPossible() async {
     try {
-      final isSecure =
-          await SecurityService.verifyDeviceSecurity(context: context);
+      await storage.ready;
+      await SecureTokenService.ensureInitialized();
+
+      // If no token is stored (e.g., user was just logged out or fresh install),
+      // show the login screen immediately without triggering security re-navigation.
+      final existingToken = await SecureTokenService.getAccessToken();
+      if (existingToken.trim().isEmpty) {
+        if (mounted) setState(() => _autoRedirecting = false);
+        return;
+      }
+
+      final isSecure = await SecurityService.verifyDeviceSecurity(
+        context: context,
+        navigateToLogin: false,
+      );
       if (!isSecure) {
         if (mounted) setState(() => _autoRedirecting = false);
         return;
       }
 
-      await storage.ready;
-      await SecureTokenService.ensureInitialized();
+      if (!mounted) return;
+      final gpsGranted = await showLocationPermissionDialog(
+        context,
+        navigateToLogin: false,
+      );
+      if (!gpsGranted) {
+        if (mounted) setState(() => _autoRedirecting = false);
+        return;
+      }
+
       final ok = await apiService.hasValidAccessToken();
       if (!ok) {
         // clear any stale tokens
@@ -452,8 +474,19 @@ class _MobileLoginState extends State<MobileLogin>
       return;
     }
 
-    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+    final isSecure = await SecurityService.verifyDeviceSecurity(
+      context: context,
+      navigateToLogin: false,
+    );
     if (!isSecure) {
+      return;
+    }
+    if (!mounted) return;
+    final gpsGranted = await showLocationPermissionDialog(
+      context,
+      navigateToLogin: false,
+    );
+    if (!gpsGranted) {
       return;
     }
     setState(() {
