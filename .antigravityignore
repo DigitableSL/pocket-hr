@@ -1,0 +1,85 @@
+# =============================================================================
+# Antigravity / AI Context Ignore — Flutter Mobile (iOS & Android only)
+# Prevents indexing & reading generated, binary, lock, and unused platform files
+# =============================================================================
+
+# Version control & IDE metadata
+.git/
+.github/
+.idea/
+__.idea/
+.vscode/
+
+# Flutter / Dart build & tool caches
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.metadata
+
+# Logs, lockfiles & dumps (huge token wasters)
+*.log
+pub_log.txt
+pubspec.lock
+ios/Podfile.lock
+coverage/
+
+# Code generation & auto-generated localization outputs
+# (Edit lib/l10n/*.arb instead of reading 6,000+ lines of generated l10n Dart files)
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+lib/l10n/app_localizations*.dart
+lib/config/firebase_options_*.dart
+
+# Android build artifacts & Gradle caches
+android/.gradle/
+android/captures/
+android/local.properties
+android/gradlew
+android/gradlew.bat
+android/gradle/wrapper/
+android/**/build/
+
+# iOS Pods, frameworks & Xcode caches
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Runner.xcodeproj/project.xcworkspace/
+ios/Runner.xcworkspace/xcshareddata/
+ios/**/Assets.xcassets/
+
+# Unused Flutter platforms (Project is iOS & Android mobile/tablet only)
+linux/
+macos/
+windows/
+web/
+
+# Binary assets, fonts, images & documents
+assets/font/
+assets/images/
+assets/svg/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.svg
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.mp3
+*.wav
+*.mp4
+*.pdf
+*.docx
+lib/importent.docx
+lib/test.json
+lib/test.dart

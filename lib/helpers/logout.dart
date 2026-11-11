@@ -8,6 +8,7 @@ import 'package:cn_pocket_hr/services/fcm_service.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:cn_pocket_hr/helpers/time_validator.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 import 'package:cn_pocket_hr/helpers/session_validator.dart';
 
 class LogoutHelper {
@@ -46,11 +47,15 @@ class LogoutHelper {
                 }
               } catch (_) {}
 
-              // 🔥 CLEAR SECURE STORAGE
+              // 🔥 CLEAR SECURE STORAGE & TOKENS
+              await SecureTokenService.clearTokens();
               try {
                 const secure = FlutterSecureStorage();
                 await secure.deleteAll();
               } catch (_) {}
+
+              // 🔥 STOP CONTINUOUS SECURITY TIMER
+              SecurityService.stopContinuousMonitoring();
 
               // 🔥 CLEAR FCM PENDING BUFFER & BADGE
               try {
@@ -87,11 +92,15 @@ class LogoutHelper {
       }
     } catch (_) {}
 
-    // 🔥 CLEAR SECURE STORAGE
+    // 🔥 CLEAR SECURE STORAGE & TOKENS
+    await SecureTokenService.clearTokens();
     try {
       const secure = FlutterSecureStorage();
       await secure.deleteAll();
     } catch (_) {}
+
+    // 🔥 STOP CONTINUOUS SECURITY TIMER
+    SecurityService.stopContinuousMonitoring();
 
     // 🔥 CLEAR FCM PENDING BUFFER & BADGE
     try {

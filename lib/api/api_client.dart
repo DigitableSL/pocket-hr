@@ -5,6 +5,7 @@ import 'package:localstorage/localstorage.dart';
 import 'package:cn_pocket_hr/api/api_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cn_pocket_hr/helpers/app_update_helper.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class ApiClient {
   static final LocalStorage storage = LocalStorage('pocketHR');
@@ -39,14 +40,14 @@ class ApiClient {
       'app-version': appVer,
     };
     
-    final accessToken = storage.getItem('access_token')?.toString();
-    final oauthToken = storage.getItem('token')?.toString();
+    final accessToken = await SecureTokenService.getAccessToken();
+    final oauthToken = await SecureTokenService.getOauthToken();
     final tenant = storage.getItem('tenant')?.toString() ?? storage.getItem('company')?.toString();
     
-    if (accessToken != null && accessToken.isNotEmpty) {
+    if (accessToken.isNotEmpty) {
       headers['Authorization'] = 'Bearer $accessToken';
     }
-    if (oauthToken != null && oauthToken.isNotEmpty) {
+    if (oauthToken.isNotEmpty) {
       headers['Oauth-Token'] = oauthToken;
     }
     if (tenant != null && tenant.isNotEmpty) {

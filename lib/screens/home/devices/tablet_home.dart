@@ -43,11 +43,12 @@ class TabletHome extends StatefulWidget {
   _TabletHomeState createState() => _TabletHomeState();
 }
 
-class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
+class _TabletHomeState extends State<TabletHome>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   int currentIndex = 0;
   AnimationController? _animationController;
   PageController? _controller;
-  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
  // late AudioPlayer _audioPlayer;
 
   String morningBg = FlavorConfig.instance.morningBg;
@@ -57,7 +58,9 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
 
   late String bgImg;
   String? _dateTime;
-  late Timer _timer;
+  final ValueNotifier<String> _dateTimeNotifier =
+      ValueNotifier<String>("loading...");
+  Timer? _timer;
   late String checking = "CHECK-IN";
   final DateTime now = DateTime.now();
   LocalStorage storage = LocalStorage('pocketHR');
@@ -164,14 +167,15 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     initializeDateFormatting();
     getLocation();
     // changeBTN();
     _controller = PageController(initialPage: 0);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    _timer = new Timer.periodic(Duration(seconds: 1), (Timer t) => getTime());
+    _startClockTimer();
     _animationController = AnimationController(
-        vsync: this, duration: Duration(milliseconds: 1500));
+        vsync: this, duration: const Duration(milliseconds: 1500));
 
     _blinkController = AnimationController(
       vsync: this,
@@ -183,6 +187,7 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
 
     // Refresh profile from API if storage was cleared (e.g. after logout+login).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) getTime();
       try {
         await storage.ready;
         if (storage.getItem('me_profile') == null) {
@@ -193,8 +198,38 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
     });
   }
 
+  void _startClockTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) getTime();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startClockTimer();
+      if (streamSubscription != null && streamSubscription!.isPaused) {
+        streamSubscription!.resume();
+      }
+      SecurityService.verifyDeviceSecurity(
+        currentPosition: _currentPosition,
+        context: context,
+      );
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _timer?.cancel();
+      _timer = null;
+      if (streamSubscription != null && !streamSubscription!.isPaused) {
+        streamSubscription!.pause();
+      }
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     try {
       _qrWindowTimer?.cancel();
     } catch (_) {}
@@ -205,38 +240,45 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
       _blinkController?.dispose();
     } catch (_) {}
     try {
-    //  _audioPlayer.stop();
-    //  _audioPlayer.dispose();
+      _timer?.cancel();
     } catch (_) {}
-    _timer.cancel();
-    streamSubscription.cancel();
-    _animationController!.dispose();
+    try {
+      streamSubscription?.cancel();
+    } catch (_) {}
+    try {
+      _animationController?.dispose();
+    } catch (_) {}
+    try {
+      _dateTimeNotifier.dispose();
+    } catch (_) {}
     super.dispose();
   }
 
-  getTime() {
-    String languageCode = Localizations.localeOf(context).languageCode;
+  void getTime() {
+    if (!mounted) return;
+    final currentNow = DateTime.now();
+    final String languageCode = Localizations.localeOf(context).languageCode;
     String formattedDateTime = "";
     String suffix = 'th';
-    final int digit = now.day % 10;
-    if ((digit > 0 && digit < 4) && (now.day < 11 || now.day > 13)) {
+    final int digit = currentNow.day % 10;
+    if ((digit > 0 && digit < 4) &&
+        (currentNow.day < 11 || currentNow.day > 13)) {
       suffix = <String>['st', 'nd', 'rd'][digit - 1];
     }
 
     if (languageCode == 'si' || languageCode == 'ta') {
       formattedDateTime = DateFormat("dd MMM yyyy - kk:mm:ss", languageCode)
-          .format(DateTime.now())
-          .toString();
+          .format(currentNow);
     } else {
       formattedDateTime =
           DateFormat("d'$suffix' MMM yyyy - kk:mm:ss", languageCode)
-              .format(DateTime.now())
-              .toString();
+              .format(currentNow);
     }
 
-    setState(() {
-      _dateTime = formattedDateTime;
-    });
+    _dateTime = formattedDateTime;
+    if (_dateTimeNotifier.value != formattedDateTime) {
+      _dateTimeNotifier.value = formattedDateTime;
+    }
   }
 
   checkinCheckout(type, {bool isRemote = false}) async {
@@ -412,28 +454,27 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
     return bgImg;
   }
 
-  var latitude;
-  var longitude;
-  var address;
-  var accuracy;
-  late StreamSubscription<Position> streamSubscription;
+  double? latitude;
+  double? longitude;
+  String? address;
+  double? accuracy;
+  double? _lastGeocodedLat;
+  double? _lastGeocodedLng;
+  StreamSubscription<Position>? streamSubscription;
 
-  var qrLatitude;
-  var qrLongitude;
-  var qrAccuracy;
-  var qrAddress;
+  double? qrLatitude;
+  double? qrLongitude;
+  double? qrAccuracy;
+  String? qrAddress;
   Position? _currentPosition;
 
-  getLocation() async {
-    bool serviceEnabled;
-
-    LocationPermission permission;
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  Future<void> getLocation() async {
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       await Geolocator.openLocationSettings();
       return Future.error('Location services are disabled.');
     }
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -444,8 +485,36 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
-    streamSubscription =
-        Geolocator.getPositionStream().listen((Position position) {
+
+    // Obtain an initial position immediately so punches don't wait for movement
+    try {
+      final initialPos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      if (!mounted) return;
+      final isClean =
+          await SecurityService.verifyPosition(initialPos, context: context);
+      if (!isClean) return;
+      _currentPosition = initialPos;
+      latitude = initialPos.latitude;
+      longitude = initialPos.longitude;
+      accuracy = initialPos.accuracy;
+      getAddressFromLatLang(initialPos);
+    } catch (_) {}
+
+    await streamSubscription?.cancel();
+    streamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 15,
+      ),
+    ).listen((Position position) async {
+      final isClean = await SecurityService.verifyPosition(
+        position,
+        context: mounted ? context : null,
+      );
+      if (!isClean) return;
+
       _currentPosition = position;
       latitude = position.latitude;
       longitude = position.longitude;
@@ -455,21 +524,37 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
   }
 
   Future<void> getAddressFromLatLang(Position position) async {
-    List<Placemark> placemark =
-        await placemarkFromCoordinates(position.latitude, position.longitude);
-    Placemark place = placemark[0];
-
-    address = '${place.street}, ${place.locality}';
+    try {
+      if (address != null &&
+          _lastGeocodedLat != null &&
+          _lastGeocodedLng != null) {
+        final moved = _distanceBetween(
+          _lastGeocodedLat!,
+          _lastGeocodedLng!,
+          position.latitude,
+          position.longitude,
+        );
+        if (moved < 25.0) return;
+      }
+      final List<Placemark> placemark =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (placemark.isNotEmpty) {
+        final Placemark place = placemark.first;
+        _lastGeocodedLat = position.latitude;
+        _lastGeocodedLng = position.longitude;
+        address = '${place.street ?? ''}, ${place.locality ?? ''}';
+      }
+    } catch (_) {}
   }
 
   Future<void> _getQrAddressFromLatLang(Position position) async {
     try {
-      List<Placemark> placemark =
+      final List<Placemark> placemark =
           await placemarkFromCoordinates(position.latitude, position.longitude);
-      Placemark place = placemark[0];
-      if (mounted) {
+      if (placemark.isNotEmpty && mounted) {
+        final Placemark place = placemark.first;
         setState(() {
-          qrAddress = '${place.street}, ${place.locality}';
+          qrAddress = '${place.street ?? ''}, ${place.locality ?? ''}';
         });
       }
     } catch (_) {}
@@ -900,12 +985,15 @@ class _TabletHomeState extends State<TabletHome> with TickerProviderStateMixin {
                           alignment: Alignment.centerLeft,
                           child: Padding(
                             padding: const EdgeInsets.only(left: 4.0),
-                            child: Text(
-                              _dateTime ?? "loading...",
-                              style: TextStyle(
-                                color: HRColors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                            child: ValueListenableBuilder<String>(
+                              valueListenable: _dateTimeNotifier,
+                              builder: (_, dateTimeStr, __) => Text(
+                                dateTimeStr,
+                                style: TextStyle(
+                                  color: HRColors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),

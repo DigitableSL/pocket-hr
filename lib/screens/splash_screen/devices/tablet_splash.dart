@@ -12,6 +12,7 @@ import 'package:cn_pocket_hr/screens/location/location_permission_dialog.dart';
 import 'package:cn_pocket_hr/providers/locale_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class TabletSplash extends StatefulWidget {
   const TabletSplash({Key? key}) : super(key: key);
@@ -59,19 +60,21 @@ class _TabletSplashState extends State<TabletSplash>
   var saveLang = null;
 
   navigationPage() async {
-    // Check developer mode and mock location before doing anything else
+    // Check developer mode, auto date/time, and mock location before doing anything else
     final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
     if (!isSecure) return;
 
     await storage.ready;
+    await SecureTokenService.ensureInitialized();
     saveLang = storage.getItem('lang');
     setLanguage(saveLang);
 
     // Domex: require location permission before proceeding.
-  //   if (FlavorConfig.instance.tenant.toString().toLowerCase() == 'domex') {
-  // final granted = await showLocationPermissionDialog(context);
-  // if (granted != true) return;
-  //   }
+    if (FlavorConfig.instance.tenant.toString().toLowerCase() == 'domex') {
+      if (!mounted) return;
+      final granted = await showLocationPermissionDialog(context);
+      if (granted != true) return;
+    }
 
     // Require both saved tenant + access token
     final savedTenant = (storage.getItem('tenant') ?? '').toString();
@@ -83,6 +86,7 @@ class _TabletSplashState extends State<TabletSplash>
       if (hasSavedTenant && hasToken) {
         final me = await apiService.fetchMeProfileWithBearer();
         if (me != null) {
+          if (!mounted) return;
           Navigator.pushNamed(context, HRMain.routeName);
           return;
         }
@@ -90,7 +94,10 @@ class _TabletSplashState extends State<TabletSplash>
     } catch (_) {}
 
     // Fallback: login
-    storage.clear();
+    try {
+      await SecureTokenService.clearTokens();
+    } catch (_) {}
+    if (!mounted) return;
     Navigator.pushNamed(context, HRLogin.routeName);
   }
 
@@ -111,16 +118,17 @@ class _TabletSplashState extends State<TabletSplash>
 
   void autoLogin(email, pin, epf) async {
     // Legacy auto login removed. Proceed to introduction/login.
-    storage.clear();
-  Navigator.pushNamed(context, HRLogin.routeName);
+    try {
+      await SecureTokenService.clearTokens();
+    } catch (_) {}
+    if (!mounted) return;
+    Navigator.pushNamed(context, HRLogin.routeName);
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () {
-        return true as Future<bool>;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         backgroundColor: HRColors.splashbackgroundColor,
         body: Container(

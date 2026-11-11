@@ -1,3 +1,42 @@
 {
-    "cmake.sourceDirectory": "/home/akesh/Work/new_hr/cn_pocket_hr/linux"
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/__.idea": true,
+    "**/.dart_tool": true,
+    "**/build": true,
+    "pub_log.txt": true
+  },
+  "search.exclude": {
+    "**/.git": true,
+    "**/__.idea": true,
+    "**/.dart_tool": true,
+    "**/build": true,
+    "**/ios/Pods": true,
+    "**/ios/.symlinks": true,
+    "**/android/.gradle": true,
+    "**/linux": true,
+    "**/macos": true,
+    "**/windows": true,
+    "**/web": true,
+    "**/assets": true,
+    "**/*.g.dart": true,
+    "**/*.freezed.dart": true,
+    "lib/l10n/app_localizations*.dart": true,
+    "pubspec.lock": true,
+    "ios/Podfile.lock": true,
+    "pub_log.txt": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/.dart_tool/**": true,
+    "**/build/**": true,
+    "**/ios/Pods/**": true,
+    "**/android/.gradle/**": true,
+    "**/linux/**": true,
+    "**/macos/**": true,
+    "**/windows/**": true,
+    "**/web/**": true
+  }
 }

@@ -18,6 +18,7 @@ import 'package:cn_pocket_hr/screens/login/otp_page.dart';
 import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class MobileLogin extends StatefulWidget {
   const MobileLogin({Key? key}) : super(key: key);
@@ -130,13 +131,20 @@ class _MobileLoginState extends State<MobileLogin>
 
   Future<void> _autoLoginIfPossible() async {
     try {
+      final isSecure =
+          await SecurityService.verifyDeviceSecurity(context: context);
+      if (!isSecure) {
+        if (mounted) setState(() => _autoRedirecting = false);
+        return;
+      }
+
       await storage.ready;
+      await SecureTokenService.ensureInitialized();
       final ok = await apiService.hasValidAccessToken();
       if (!ok) {
         // clear any stale tokens
         try {
-          await storage.setItem('access_token', '');
-          await storage.setItem('refresh_token', '');
+          await SecureTokenService.clearTokens();
           await storage.setItem('tenant', '');
         } catch (_) {}
         if (mounted) setState(() => _autoRedirecting = false);
@@ -155,13 +163,13 @@ class _MobileLoginState extends State<MobileLogin>
         }
         FCMService.sendTokenToBackend();
 
+        if (!mounted) return;
         Navigator.of(context).pushReplacementNamed(HRMain.routeName);
         return;
       } catch (e) {
         // fetch failed — clear tokens and show login
         try {
-          await storage.setItem('access_token', '');
-          await storage.setItem('refresh_token', '');
+          await SecureTokenService.clearTokens();
           await storage.setItem('tenant', '');
         } catch (_) {}
         if (mounted) setState(() => _autoRedirecting = false);
@@ -464,10 +472,12 @@ class _MobileLoginState extends State<MobileLogin>
         return;
       }
 
-     final result = await _ssoService.signIn(tenant: tenantName, context: context);
-      storage.setItem('access_token', result.accessToken);
-      storage.setItem('refresh_token', result.refreshToken);
-      storage.setItem('tenant', tenantName);
+      final result = await _ssoService.signIn(tenant: tenantName, context: context);
+      await SecureTokenService.saveTokens(
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      );
+      await storage.setItem('tenant', tenantName);
 
       // Ensure uid is derived from access token for later API calls (e.g., QR locations-by-userid)
       try {

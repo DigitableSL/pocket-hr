@@ -53,7 +53,10 @@ class _HRMainState extends State<HRMain> with WidgetsBindingObserver {
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await SecurityService.verifyDeviceSecurity(context: context);
+      final isClean = await SecurityService.verifyDeviceSecurity(context: context);
+      if (isClean) {
+        SecurityService.startContinuousMonitoring();
+      }
       await FCMService.initialize();
       FCMService.sendTokenToBackend();
     });
@@ -61,6 +64,7 @@ class _HRMainState extends State<HRMain> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    SecurityService.pauseContinuousMonitoring();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -68,7 +72,11 @@ class _HRMainState extends State<HRMain> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      SecurityService.verifyDeviceSecurity(context: context);
+      SecurityService.resumeContinuousMonitoring(context: context);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      SecurityService.pauseContinuousMonitoring();
     }
   }
 

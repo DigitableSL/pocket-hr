@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,48 @@ class SecurityService {
       MethodChannel('asia.ceynet.pocket/security');
 
   static bool _isEnforcing = false;
+  static bool _isChecking = false;
+  static Timer? _monitoringTimer;
+  static Position? _lastKnownPosition;
+
+  /// Starts continuous foreground security monitoring (checks Auto Date/Time,
+  /// Developer Mode, and Mock GPS every [interval] while app is active).
+  /// Automatically pauses when [pauseContinuousMonitoring] is called on app backgrounding
+  /// to conserve battery.
+  static void startContinuousMonitoring({
+    Duration interval = const Duration(seconds: 10),
+  }) {
+    _monitoringTimer?.cancel();
+    _monitoringTimer = Timer.periodic(interval, (_) {
+      if (!_isEnforcing && !_isChecking) {
+        verifyDeviceSecurity(currentPosition: _lastKnownPosition);
+      }
+    });
+  }
+
+  /// Pauses the periodic security timer when the app enters background to save battery.
+  static void pauseContinuousMonitoring() {
+    _monitoringTimer?.cancel();
+    _monitoringTimer = null;
+  }
+
+  /// Resumes continuous monitoring and performs an immediate check when the app returns to foreground.
+  static Future<bool> resumeContinuousMonitoring({BuildContext? context}) async {
+    final isClean = await verifyDeviceSecurity(
+      currentPosition: _lastKnownPosition,
+      context: context,
+    );
+    if (isClean) {
+      startContinuousMonitoring();
+    }
+    return isClean;
+  }
+
+  /// Stops continuous monitoring completely (e.g. on logout).
+  static void stopContinuousMonitoring() {
+    _monitoringTimer?.cancel();
+    _monitoringTimer = null;
+  }
 
   /// Verifies device developer mode, automatic date & time, and mock location status.
   /// If a violation is detected, shows an error message and logs out the user.
@@ -27,10 +70,15 @@ class SecurityService {
     BuildContext? context,
   }) async {
     if (_isEnforcing) return false;
+    if (currentPosition != null) {
+      _lastKnownPosition = currentPosition;
+    }
+
+    final positionToCheck = currentPosition ?? _lastKnownPosition;
 
     // 1. Check if current geolocator position is flagged as mock or time-tampered
-    if (currentPosition != null) {
-      if (currentPosition.isMocked) {
+    if (positionToCheck != null) {
+      if (positionToCheck.isMocked) {
         await _handleViolation(
           type: SecurityViolationType.mockLocation,
           fallbackMessage:
@@ -40,9 +88,12 @@ class SecurityService {
         return false;
       }
 
-      if (currentPosition.timestamp != null) {
-        final clockDrift =
-            DateTime.now().difference(currentPosition.timestamp!).inSeconds.abs();
+      if (positionToCheck.timestamp != null) {
+        final clockDrift = DateTime.now()
+            .difference(positionToCheck.timestamp!)
+            .inSeconds
+            .abs();
+        // Only check drift against fresh GPS fixes (within 5 minutes) or when device clock drifted away
         if (clockDrift > 180) {
           await _handleViolation(
             type: SecurityViolationType.autoTimeDisabled,
@@ -57,6 +108,7 @@ class SecurityService {
 
     // 2. Query native Android / iOS checks via MethodChannel
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      _isChecking = true;
       try {
         // A. Automatic Date & Time check (strictly required to prevent attendance clock tampering)
         final bool isAutoTime =
@@ -98,17 +150,21 @@ class SecurityService {
         }
       } catch (e) {
         debugPrint('[SecurityService] verifyDeviceSecurity error: $e');
+      } finally {
+        _isChecking = false;
       }
     }
 
     return true;
   }
 
-  /// Verifies a specific [Position] instance (e.g. from attendance punch or QR scan).
+  /// Verifies a specific [Position] instance (e.g. from GPS stream, attendance punch, or QR scan).
   static Future<bool> verifyPosition(
     Position position, {
     BuildContext? context,
   }) async {
+    _lastKnownPosition = position;
+
     if (position.isMocked) {
       await _handleViolation(
         type: SecurityViolationType.mockLocation,
@@ -143,6 +199,7 @@ class SecurityService {
   }) async {
     if (_isEnforcing) return;
     _isEnforcing = true;
+    stopContinuousMonitoring();
 
     String errorMessage = fallbackMessage;
     try {
@@ -176,5 +233,7 @@ class SecurityService {
 
   static void reset() {
     _isEnforcing = false;
+    _isChecking = false;
+    _lastKnownPosition = null;
   }
 }

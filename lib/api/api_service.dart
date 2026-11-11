@@ -19,6 +19,7 @@ import 'package:cn_pocket_hr/models/hr/todo_model.dart';
 import 'package:cn_pocket_hr/services/device_details_service.dart';
 import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/api/api_client.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cn_pocket_hr/helpers/app_update_helper.dart';
 
@@ -159,12 +160,10 @@ class APIService {
     String uid = storage.getItem('uid')?.toString() ?? '';
 
     if (uid.isEmpty) {
-      final token = storage.getItem('token')?.toString();
-      final access = storage.getItem('access_token')?.toString();
-      if ((access == null || access.isEmpty) &&
-          token != null &&
-          token.isNotEmpty) {
-        await storage.setItem('access_token', token);
+      final token = await SecureTokenService.getOauthToken();
+      final access = await SecureTokenService.getAccessToken();
+      if (access.isEmpty && token.isNotEmpty) {
+        await SecureTokenService.saveTokens(accessToken: token);
       }
       final ensured = await ensureUidFromAccessToken();
       if (ensured != null && ensured.isNotEmpty) {
@@ -239,7 +238,7 @@ class APIService {
       if (ip.isNotEmpty) data['device_ip'] = ip;
       if (batteryLevel.isNotEmpty) data['battery_level'] = batteryLevel;
     } catch (e) {
-      print('[CHECK] device details collect failed: $e');
+      debugPrint('[CHECK] device details collect failed: $e');
     }
     try {
       await _injectTenantToBody(data);
@@ -251,17 +250,16 @@ class APIService {
       "app_version": appVer,
       "app-version": appVer,
     };
-    final oauthToken = storage.getItem('token')?.toString();
-    final accessToken = storage.getItem('access_token')?.toString();
+    final oauthToken = SecureTokenService.getOauthTokenSync();
+    final accessToken = SecureTokenService.getAccessTokenSync();
     if (oauthToken != null && oauthToken.isNotEmpty)
       headers['Oauth-Token'] = oauthToken;
     if (accessToken != null && accessToken.isNotEmpty)
       headers['Authorization'] = 'Bearer $accessToken';
       headers['app_version'] = await _getAppVersion();
     try {
-      print('[CHECK] POST $url');
-      print('[CHECK] headers => ' + headers.toString());
-      print('[CHECK] body => ' + data.toString());
+      debugPrint('[CHECK] POST $url');
+      debugPrint('[CHECK] body => $data');
     } catch (_) {}
 
     try {
@@ -270,11 +268,11 @@ class APIService {
           body: data.map((k, v) => MapEntry(k, v)),
           encoding: Encoding.getByName("utf-8"));
       final values = json.decode(response.body);
-      print('[CHECK] response => ' + response.body);
-      print('[CHECK] status ${response.statusCode}');
+      debugPrint('[CHECK] response => ' + response.body);
+      debugPrint('[CHECK] status ${response.statusCode}');
 
       if (values is Map && values.containsKey('message'))
-        print(values['message']);
+        debugPrint(values['message']?.toString());
 
       // Inject the status code so the UI can check it explicitly
       if (values is Map) {
@@ -284,7 +282,7 @@ class APIService {
       }
       return {'status': response.statusCode, 'body': response.body};
     } catch (e) {
-      print('[CHECK] ERROR => $e');
+      debugPrint('[CHECK] ERROR => $e');
       return null;
     }
   }
@@ -293,8 +291,8 @@ class APIService {
     try {
       await storage.ready;
       // access_token is the Bearer token, token is the oauth token used as Oauth-Token
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
+      final accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
       final tenant = await _resolveTenant();
       final url = '${baseUrl}/leave/store';
 
@@ -381,16 +379,16 @@ class APIService {
       debugPrint('[LEAVE] POST $url');
       debugPrint('[LEAVE] headers => $headers');
       debugPrint('[LEAVE] body => $data');
-      print('=================== LEAVE REQUEST FULL BODY ===================');
-      print(jsonEncode(data));
-      print('==============================================================');
+      debugPrint('=================== LEAVE REQUEST FULL BODY ===================');
+      debugPrint(jsonEncode(data));
+      debugPrint('==============================================================');
 
       final response = await http.post(Uri.parse(url),
           headers: headers, body: data, encoding: Encoding.getByName("utf-8"));
 
-      print('=================== LEAVE RESPONSE FULL BODY ===================');
-      print(response.body);
-      print('================================================================');
+      debugPrint('=================== LEAVE RESPONSE FULL BODY ===================');
+      debugPrint(response.body);
+      debugPrint('================================================================');
       debugPrint('[LEAVE] response => ${response.body}');
       final values = json.decode(response.body);
 
@@ -420,8 +418,8 @@ class APIService {
 
       final url = '${baseUrl}/leave/balance?userId=$uid';
       final uri = await _uriWithTenant(url);
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
+      final accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
 
       final appVer = await _getAppVersion();
       final headers = <String, String>{
@@ -457,8 +455,8 @@ class APIService {
 
       final url = '${baseUrl}/leave/apply-eligibility/$uid';
       final uri = await _uriWithTenant(url);
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
+      final accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
 
       final appVer = await _getAppVersion();
       final headers = <String, String>{
@@ -494,8 +492,8 @@ class APIService {
       final uri = await _uriWithTenant(url, {
         'approvableByMe': approvableByMe.toString(),
       });
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
+      final accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
 
       final appVer = await _getAppVersion();
       final headers = <String, String>{
@@ -558,7 +556,7 @@ class APIService {
     final url = api.api() + "me";
 
     final uidStr = storage.getItem('uid')?.toString() ?? '';
-    final tokenStr = storage.getItem('token')?.toString() ?? '';
+    final tokenStr = SecureTokenService.getOauthTokenSync();
     final qParams = {'user-id': uidStr};
     final header = {
       "Accept": "application/json",
@@ -593,12 +591,11 @@ class APIService {
       // Ensure a valid (non-expired) access token before calling /auth/me.
       await _ensureValidToken();
 
-      String accessToken = storage.getItem('access_token')?.toString() ?? '';
+      String accessToken = await SecureTokenService.getAccessToken();
       if (accessToken.isEmpty) {
-        print('[ME] Missing access_token in storage');
+        debugPrint('[ME] Missing access_token in storage');
         return null;
       }
-      print('[ME] Found access_token in storage: $accessToken');
       String tenant = storage.getItem('tenant')?.toString() ?? '';
       if (tenant.isEmpty) {
         tenant = storage.getItem('company')?.toString() ?? '';
@@ -649,14 +646,14 @@ class APIService {
       if (response.statusCode == 401) {
         final refreshed = await _refreshAccessToken();
         if (refreshed) {
-          accessToken = storage.getItem('access_token')?.toString() ?? '';
+          accessToken = SecureTokenService.getAccessTokenSync();
           headers['Authorization'] = 'Bearer $accessToken';
           response = await http.get(uri, headers: headers);
         }
       }
 
-      print('[ME] GET ${uri.toString()} status=${response.statusCode}');
-      print('[ME] body=${response.body}');
+      debugPrint('[ME] GET ${uri.toString()} status=${response.statusCode}');
+      debugPrint('[ME] body=${response.body}');
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception('Server error: ${response.statusCode}');
@@ -734,7 +731,7 @@ class APIService {
 
       return decoded;
     } catch (e) {
-      print('[ME] ERROR => $e');
+      debugPrint('[ME] ERROR => $e');
       rethrow;
     }
   }
@@ -744,8 +741,8 @@ class APIService {
       await storage.ready;
 
       final uidStr = storage.getItem('uid')?.toString() ?? '';
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
+      final accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
       final String url = '${baseUrl}/leave';
 
       final qParams = <String, String>{
@@ -929,8 +926,8 @@ class APIService {
   Future<List<dynamic>> fetchVariablesForUser(String userId) async {
     await storage.ready;
 
-    String? accessToken = storage.getItem('access_token')?.toString();
-    final oauthToken = storage.getItem('token')?.toString() ?? '';
+    String? accessToken = SecureTokenService.getAccessTokenSync();
+    final oauthToken = SecureTokenService.getOauthTokenSync();
     final tenant = await _resolveTenant();
 
     final url = '${baseUrl}/variables/variables/$userId';
@@ -984,7 +981,7 @@ class APIService {
       if (res.statusCode == 401 || res.statusCode == 403) {
         try {
           await fetchMeProfileWithBearer();
-          accessToken = storage.getItem('access_token')?.toString();
+          accessToken = SecureTokenService.getAccessTokenSync();
 
           res = await http.get(
             uri,
@@ -1000,7 +997,7 @@ class APIService {
 
     final decoded = jsonDecode(res.body);
     if (decoded is Map && decoded['variables'] is List) {
-      print(decoded);
+      debugPrint(decoded.toString());
       return List<dynamic>.from(decoded['variables']);
     }
     // Some backends might return list directly.
@@ -1013,20 +1010,20 @@ class APIService {
     try {
       await storage.ready;
 
-      print('\n[DEBT] ===== FETCH DEBTS START =====');
+      debugPrint('\n[DEBT] ===== FETCH DEBTS START =====');
 
-      String? accessToken = storage.getItem('access_token')?.toString();
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
+      String? accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
       final uid = (userId).toString().isNotEmpty
           ? userId.toString()
           : '605b4f4c277bf8660c7b23df';
 
-      print('[DEBT] User ID: $uid');
+      debugPrint('[DEBT] User ID: $uid');
 
       final url = '${baseUrl}/debts/$uid';
       final uri = await _uriWithTenant(url);
 
-      print('[DEBT] URL: $uri');
+      debugPrint('[DEBT] URL: $uri');
 
       Future<Map<String, String>> buildHeaders({
         bool includeAccess = true,
@@ -1042,66 +1039,66 @@ class APIService {
 
         if (includeAccess && (accessToken != null && accessToken.isNotEmpty)) {
           h['Authorization'] = 'Bearer $accessToken';
-          print('[DEBT] Using Access Token: ${accessToken.substring(0, 8)}...');
+          debugPrint('[DEBT] Using Access Token: ${accessToken.substring(0, 8)}...');
         }
 
         if (includeOauth && oauthToken.isNotEmpty) {
           h['Oauth-Token'] = oauthToken;
-          print('[DEBT] Using Oauth Token: ${oauthToken.substring(0, 8)}...');
+          debugPrint('[DEBT] Using Oauth Token: ${oauthToken.substring(0, 8)}...');
         }
 
         return h;
       }
 
-      print('[DEBT] Attempt 1 → Access + Oauth');
+      debugPrint('[DEBT] Attempt 1 → Access + Oauth');
 
       var res = await http.get(
         uri,
         headers: await buildHeaders(includeAccess: true, includeOauth: true),
       );
 
-      print('[DEBT] Response Status (Attempt 1): ${res.statusCode}');
-      print('[DEBT] Response Body: ${res.body}');
+      debugPrint('[DEBT] Response Status (Attempt 1): ${res.statusCode}');
+      debugPrint('[DEBT] Response Body: ${res.body}');
 
       // Retry logic
       if (res.statusCode == 401 || res.statusCode == 403) {
-        print('[DEBT] Unauthorized. Trying fallback methods...');
+        debugPrint('[DEBT] Unauthorized. Trying fallback methods...');
 
         // Attempt 2 → oauth only
         if (oauthToken.isNotEmpty) {
           try {
-            print('[DEBT] Attempt 2 → Oauth Only');
+            debugPrint('[DEBT] Attempt 2 → Oauth Only');
             res = await http.get(
               uri,
               headers: await buildHeaders(includeAccess: false, includeOauth: true),
             );
-            print('[DEBT] Response Status (Attempt 2): ${res.statusCode}');
+            debugPrint('[DEBT] Response Status (Attempt 2): ${res.statusCode}');
           } catch (e) {
-            print('[DEBT] Attempt 2 Failed: $e');
+            debugPrint('[DEBT] Attempt 2 Failed: $e');
           }
         }
 
         // Attempt 3 → Refresh bearer
         if (res.statusCode == 401 || res.statusCode == 403) {
           try {
-            print('[DEBT] Attempt 3 → Refreshing Bearer Token...');
+            debugPrint('[DEBT] Attempt 3 → Refreshing Bearer Token...');
             await fetchMeProfileWithBearer();
-            accessToken = storage.getItem('access_token')?.toString();
+            accessToken = SecureTokenService.getAccessTokenSync();
 
             res = await http.get(
               uri,
               headers: await buildHeaders(includeAccess: true, includeOauth: true),
             );
 
-            print('[DEBT] Response Status (Attempt 3): ${res.statusCode}');
+            debugPrint('[DEBT] Response Status (Attempt 3): ${res.statusCode}');
           } catch (e) {
-            print('[DEBT] Attempt 3 Failed: $e');
+            debugPrint('[DEBT] Attempt 3 Failed: $e');
           }
         }
       }
 
       if (res.statusCode < 200 || res.statusCode >= 300) {
-        print('[DEBT] Final Failure Status: ${res.statusCode}');
+        debugPrint('[DEBT] Final Failure Status: ${res.statusCode}');
         if (res.statusCode == 401 || res.statusCode == 403) {
           try {
             showToast('Sorry, cannot access this app. Please log in again.');
@@ -1110,25 +1107,25 @@ class APIService {
         throw Exception('Failed to load debts (${res.statusCode})');
       }
 
-      print('[DEBT] Parsing response...');
+      debugPrint('[DEBT] Parsing response...');
       final decoded = jsonDecode(res.body);
 
       if (decoded is Map && decoded['data'] is Map) {
         final data = Map<String, dynamic>.from(decoded['data']);
         if (data['debts'] is List) {
-          print('[DEBT] Debts Count: ${(data['debts'] as List).length}');
-          print('[DEBT] ===== FETCH DEBTS SUCCESS =====\n');
+          debugPrint('[DEBT] Debts Count: ${(data['debts'] as List).length}');
+          debugPrint('[DEBT] ===== FETCH DEBTS SUCCESS =====\n');
           return List<dynamic>.from(data['debts']);
         }
       }
 
-      print('[DEBT] No debts found.');
-      print('[DEBT] ===== FETCH DEBTS END =====\n');
+      debugPrint('[DEBT] No debts found.');
+      debugPrint('[DEBT] ===== FETCH DEBTS END =====\n');
       return const [];
     } catch (e, st) {
-      print('[DEBT] EXCEPTION: $e');
-      print('[DEBT] STACKTRACE: $st');
-      print('[DEBT] ===== FETCH DEBTS CRASHED =====\n');
+      debugPrint('[DEBT] EXCEPTION: $e');
+      debugPrint('[DEBT] STACKTRACE: $st');
+      debugPrint('[DEBT] ===== FETCH DEBTS CRASHED =====\n');
       rethrow;
     }
   }
@@ -1159,7 +1156,7 @@ class APIService {
       String tenant = storage.getItem('tenant')?.toString() ?? '';
       if (tenant.isEmpty) tenant = storage.getItem('company')?.toString() ?? '';
       if (tenant.isEmpty) {
-        final accessToken = storage.getItem('access_token')?.toString() ?? '';
+        final accessToken = SecureTokenService.getAccessTokenSync();
         if (accessToken.isNotEmpty) {
           final payload = _decodeJwtPayload(accessToken);
           if (payload != null) {
@@ -1194,7 +1191,7 @@ class APIService {
       String tenant = storage.getItem('tenant')?.toString() ?? '';
       if (tenant.isEmpty) tenant = storage.getItem('company')?.toString() ?? '';
       if (tenant.isEmpty) {
-        final accessToken = storage.getItem('access_token')?.toString() ?? '';
+        final accessToken = SecureTokenService.getAccessTokenSync();
         if (accessToken.isNotEmpty) {
           final payload = _decodeJwtPayload(accessToken);
           if (payload != null) {
@@ -1255,20 +1252,7 @@ class APIService {
   Future<bool> hasValidAccessToken() async {
     try {
       await storage.ready;
-      var token = storage.getItem('access_token')?.toString() ?? '';
-      if (token.isEmpty) {
-        try {
-          final secure = const FlutterSecureStorage();
-          final secureToken = await secure.read(key: 'access_token');
-          if (secureToken != null && secureToken.isNotEmpty) {
-            token = secureToken;
-            try {
-              await storage.setItem('access_token', token);
-            } catch (_) {}
-          }
-        } catch (_) {}
-      }
-
+      final token = await SecureTokenService.getAccessToken();
       if (token.isEmpty) return false;
       if (!_isJwtExpired(token)) return true;
       // Token is expired — try a silent refresh before declaring invalid.
@@ -1297,15 +1281,8 @@ class APIService {
     try {
       await storage.ready;
 
-      // --- Retrieve refresh token (secure storage first, then local storage)
-      String refreshToken = '';
-      try {
-        const secure = FlutterSecureStorage();
-        refreshToken = (await secure.read(key: 'refresh_token')) ?? '';
-      } catch (_) {}
-      if (refreshToken.isEmpty) {
-        refreshToken = storage.getItem('refresh_token')?.toString() ?? '';
-      }
+      // --- Retrieve refresh token from encrypted storage
+      final refreshToken = await SecureTokenService.getRefreshToken();
       if (refreshToken.isEmpty) {
         debugPrint('[TokenRefresh] No refresh_token — cannot refresh.');
         _refreshCompleter!.complete(false);
@@ -1314,7 +1291,7 @@ class APIService {
 
       // --- Extract client_id from the current access token JWT payload
       String clientId = '';
-      final currentToken = storage.getItem('access_token')?.toString() ?? '';
+      final currentToken = await SecureTokenService.getAccessToken();
       if (currentToken.isNotEmpty) {
         clientId =
             _decodeJwtPayload(currentToken)?['client_id']?.toString() ?? '';
@@ -1354,16 +1331,13 @@ class APIService {
         return false;
       }
 
-      // --- Persist both tokens
-      await storage.setItem('access_token', newAccess);
-      await storage.setItem('refresh_token', newRefresh);
-      try {
-        const secure = FlutterSecureStorage();
-        await secure.write(key: 'access_token', value: newAccess);
-        await secure.write(key: 'refresh_token', value: newRefresh);
-      } catch (_) {}
+      // --- Persist both tokens exclusively in encrypted storage
+      await SecureTokenService.saveTokens(
+        accessToken: newAccess,
+        refreshToken: newRefresh,
+      );
 
-      debugPrint('[TokenRefresh] Tokens refreshed and stored.');
+      debugPrint('[TokenRefresh] Tokens refreshed and stored securely.');
       _refreshCompleter!.complete(true);
       return true;
     } catch (e) {
@@ -1382,17 +1356,7 @@ class APIService {
   Future<bool> _ensureValidToken() async {
     try {
       await storage.ready;
-      String token = storage.getItem('access_token')?.toString() ?? '';
-      if (token.isEmpty) {
-        try {
-          const secure = FlutterSecureStorage();
-          final s = await secure.read(key: 'access_token');
-          if (s != null && s.isNotEmpty) {
-            token = s;
-            await storage.setItem('access_token', token);
-          }
-        } catch (_) {}
-      }
+      final token = await SecureTokenService.getAccessToken();
       if (token.isEmpty) return false;
       if (!_isJwtExpired(token)) return true;
       debugPrint('[TokenRefresh] Token expired — refreshing proactively...');
@@ -1409,8 +1373,8 @@ class APIService {
     final existing = storage.getItem('uid')?.toString();
     if (existing != null && existing.isNotEmpty) return existing;
 
-    final accessToken = storage.getItem('access_token')?.toString();
-    if (accessToken == null || accessToken.isEmpty) return null;
+    final accessToken = await SecureTokenService.getAccessToken();
+    if (accessToken.isEmpty) return null;
 
     final payload = _decodeJwtPayload(accessToken);
     if (payload == null) return null;
@@ -1469,8 +1433,8 @@ class APIService {
       qParams['mobile'] = 'true';
 
       final uri = await _uriWithTenant(baseUrl, qParams);
-      final token = storage.getItem('token')?.toString() ?? '';
-      final access = storage.getItem('access_token')?.toString() ?? '';
+      final token = SecureTokenService.getOauthTokenSync();
+      final access = SecureTokenService.getAccessTokenSync();
 
       final headers = {
         'Accept': 'application/json',
@@ -1480,8 +1444,8 @@ class APIService {
       if (access.isNotEmpty) headers['Authorization'] = 'Bearer $access';
 
       final response = await http.get(uri, headers: headers);
-      print('[ATT] GET $uri status=${response.statusCode}');
-      print('[ATT] body=${response.body}');
+      debugPrint('[ATT] GET $uri status=${response.statusCode}');
+      debugPrint('[ATT] body=${response.body}');
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         try {
@@ -1552,7 +1516,7 @@ class APIService {
             try {
               out.add(AttendanceModel.fromJson(normalized));
             } catch (err) {
-              print('[ATT] skip record parse error => $err');
+              debugPrint('[ATT] skip record parse error => $err');
             }
           }
         }
@@ -1632,7 +1596,7 @@ class APIService {
             try {
               out.add(AttendanceModel.fromJson(normalized));
             } catch (err) {
-              print('[ATT] skip pending record parse error => $err');
+              debugPrint('[ATT] skip pending record parse error => $err');
             }
           });
         }
@@ -1648,8 +1612,8 @@ class APIService {
 
       return [];
     } catch (e, st) {
-      print('[ATT] getAttendanceForUserMonth ERROR => $e');
-      print(st);
+      debugPrint('[ATT] getAttendanceForUserMonth ERROR => $e');
+      debugPrint(st.toString());
       rethrow;
     }
   }
@@ -1917,11 +1881,11 @@ class APIService {
         final tenant = await _resolveTenant() ?? '';
         final headers = {
           'Accept': 'image/*',
-          if (storage.getItem('token')?.toString().isNotEmpty ?? false)
-            'Oauth-Token': storage.getItem('token').toString(),
-          if (storage.getItem('access_token')?.toString().isNotEmpty ?? false)
+          if (SecureTokenService.getOauthTokenSync().isNotEmpty)
+            'Oauth-Token': SecureTokenService.getOauthTokenSync(),
+          if (SecureTokenService.getAccessTokenSync().isNotEmpty)
             'Authorization':
-                'Bearer ${storage.getItem('access_token').toString()}',
+                'Bearer ${SecureTokenService.getAccessTokenSync()}',
           if (tenant.isNotEmpty) 'Tenant': tenant,
         };
 
@@ -1980,7 +1944,7 @@ class APIService {
       }
 
       if (uid.isEmpty) {
-        print('[SLIPS] missing uid, cannot fetch slips');
+        debugPrint('[SLIPS] missing uid, cannot fetch slips');
         return {
           'slips': [],
           'statusCode': 400,
@@ -1996,8 +1960,8 @@ class APIService {
 
       final uri = await _uriWithTenant(url, qParams);
 
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
+      final oauthToken = SecureTokenService.getOauthTokenSync();
+      final accessToken = SecureTokenService.getAccessTokenSync();
 
       final headers = <String, String>{
         'Accept': 'application/json',
@@ -2007,11 +1971,11 @@ class APIService {
       if (accessToken.isNotEmpty)
         headers['Authorization'] = 'Bearer $accessToken';
 
-      print('[SLIPS] GET $uri');
+      debugPrint('[SLIPS] GET $uri');
       final res = await http.get(uri, headers: headers);
 
-      print('[SLIPS] status=${res.statusCode}');
-      print('[SLIPS] body=${res.body}');
+      debugPrint('[SLIPS] status=${res.statusCode}');
+      debugPrint('[SLIPS] body=${res.body}');
 
       final decoded = jsonDecode(res.body);
 
@@ -2049,8 +2013,8 @@ class APIService {
 
       return {'slips': out, 'statusCode': res.statusCode, 'message': 'Success'};
     } catch (e, st) {
-      print('[SLIPS] ERROR => $e');
-      print(st);
+      debugPrint('[SLIPS] ERROR => $e');
+      debugPrint(st.toString());
       return {'slips': [], 'statusCode': 500, 'message': 'serverError', 'error': e.toString()};
     }
   }
@@ -2070,8 +2034,8 @@ class APIService {
 
       final uri = await _uriWithTenant(url, qParams);
 
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
+      final oauthToken = SecureTokenService.getOauthTokenSync();
+      final accessToken = SecureTokenService.getAccessTokenSync();
 
       final headers = <String, String>{
         'Accept': 'application/json',
@@ -2082,8 +2046,8 @@ class APIService {
         headers['Authorization'] = 'Bearer $accessToken';
 
       final res = await http.get(uri, headers: headers);
-      print('[SLIP DETAIL] GET $uri status=${res.statusCode}');
-      print('[SLIP DETAIL] body=${res.body}');
+      debugPrint('[SLIP DETAIL] GET $uri status=${res.statusCode}');
+      debugPrint('[SLIP DETAIL] body=${res.body}');
 
       final decoded = jsonDecode(res.body);
 
@@ -2117,7 +2081,7 @@ class APIService {
       }
       return {'statusCode': res.statusCode};
     } catch (e) {
-      print('[SLIP DETAIL] Error => $e');
+      debugPrint('[SLIP DETAIL] Error => $e');
       return {};
     }
   }
@@ -2128,8 +2092,8 @@ class APIService {
 
       // Updated download endpoint structure
       final url = '${baseUrl}/payroll/salary-slips/$id/download';
-      final oauthToken = storage.getItem('token')?.toString() ?? '';
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
+      final oauthToken = SecureTokenService.getOauthTokenSync();
+      final accessToken = SecureTokenService.getAccessTokenSync();
 
       final tenant = await _resolveTenant() ?? '';
       final qParams = <String, String>{};
@@ -2137,9 +2101,9 @@ class APIService {
 
       final uri = await _uriWithTenant(url, qParams);
 
-      print('[SLIP] ==== EMAIL SALARY SLIP START ====');
-      print('[SLIP] ID: $id');
-      print('[SLIP] URL: $uri');
+      debugPrint('[SLIP] ==== EMAIL SALARY SLIP START ====');
+      debugPrint('[SLIP] ID: $id');
+      debugPrint('[SLIP] URL: $uri');
 
       final headers = {
         'Accept': 'application/json',
@@ -2148,24 +2112,23 @@ class APIService {
 
       if (oauthToken.isNotEmpty) {
         headers['Oauth-Token'] = oauthToken;
-        print(
-            '[SLIP] Oauth-Token: ${oauthToken.substring(0, 8)}...'); // partial log
+        debugPrint('[SLIP] Oauth-Token present');
       }
 
       if (accessToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $accessToken';
-        print('[SLIP] Access-Token: ${accessToken.substring(0, 8)}...');
+        debugPrint('[SLIP] Access-Token present');
       }
 
-      print('[SLIP] Sending GET request...');
+      debugPrint('[SLIP] Sending GET request...');
 
       // Note: Download requests are typically GET. If it was POST before, it's switched to GET here
       final res = await http.get(uri, headers: headers);
 
-      print('[SLIP] Response Status: ${res.statusCode}');
+      debugPrint('[SLIP] Response Status: ${res.statusCode}');
       // Truncate response body log in case it is a raw PDF byte stream
-      print('[SLIP] Response Body Length: ${res.bodyBytes.length}');
-      print('[SLIP] ==== RESPONSE RECEIVED ====');
+      debugPrint('[SLIP] Response Body Length: ${res.bodyBytes.length}');
+      debugPrint('[SLIP] ==== RESPONSE RECEIVED ====');
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         return {
@@ -2183,8 +2146,8 @@ class APIService {
         'statusCode': res.statusCode
       };
     } catch (e, st) {
-      print('[SLIP] EXCEPTION: $e');
-      print('[SLIP] STACKTRACE: $st');
+      debugPrint('[SLIP] EXCEPTION: $e');
+      debugPrint('[SLIP] STACKTRACE: $st');
 
       return {'status': false, 'message': 'serverError', 'error': e.toString()};
     }
@@ -2211,7 +2174,7 @@ class APIService {
       }
 
       if (userId.isEmpty) {
-        print('[QR] Missing userId');
+        debugPrint('[QR] Missing userId');
         return [];
       }
 
@@ -2219,7 +2182,7 @@ class APIService {
       final endpoint = '$baseUrl/teams/locations-by-userid/$userId';
       final uri = Uri.parse(endpoint);
 
-      final accessToken = storage.getItem('access_token')?.toString() ?? '';
+      final accessToken = SecureTokenService.getAccessTokenSync();
 
       final headers = <String, String>{
         'Accept': 'application/json',
@@ -2235,12 +2198,12 @@ class APIService {
         headers['Tenant'] = resolvedTenant;
       }
 
-      print('[API] GET $uri');
+      debugPrint('[API] GET $uri');
 
       final response = await http.get(uri, headers: headers);
 
-      print('[API] Status: ${response.statusCode}');
-      print('[API] Body: ${response.body}');
+      debugPrint('[API] Status: ${response.statusCode}');
+      debugPrint('[API] Body: ${response.body}');
 
       if (response.statusCode != 200) {
         throw HttpException('Server returned status code: ${response.statusCode}');
@@ -2263,19 +2226,19 @@ class APIService {
       final List<UserLocation> result = locationList
           .map((e) => UserLocation.fromJson(Map<String, dynamic>.from(e)))
           .toList();
-      print(locationList);
+      debugPrint(locationList.toString());
       
       // Save last backend coordinates locally for offline fallback
       try {
         await storage.setItem('cached_tenant_coordinates', jsonEncode(locationList));
       } catch (cacheErr) {
-        print('[QR CACHE SAVE ERROR] $cacheErr');
+        debugPrint('[QR CACHE SAVE ERROR] $cacheErr');
       }
 
       return result;
     } catch (e, stack) {
-      print('[API ERROR] $e');
-      print(stack);
+      debugPrint('[API ERROR] $e');
+      debugPrint(stack.toString());
       
       // Fallback to cached coordinates if backend request fails
       try {
@@ -2287,11 +2250,11 @@ class APIService {
           final List<UserLocation> cachedResult = cachedList
               .map((e) => UserLocation.fromJson(Map<String, dynamic>.from(e)))
               .toList();
-          print('[QR CACHE] Using cached tenant coordinates (${cachedResult.length} locations) due to API failure.');
+          debugPrint('[QR CACHE] Using cached tenant coordinates (${cachedResult.length} locations) due to API failure.');
           return cachedResult;
         }
       } catch (cacheErr) {
-        print('[QR CACHE READ ERROR] Failed reading cached coordinates: $cacheErr');
+        debugPrint('[QR CACHE READ ERROR] Failed reading cached coordinates: $cacheErr');
       }
       
       rethrow;
@@ -2300,7 +2263,7 @@ class APIService {
 
   Future<Map<String, dynamic>> getMyTeam() async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     final url = '$baseUrl/teams/my-team?tenant=$tenant';
@@ -2318,7 +2281,7 @@ class APIService {
 
   Future<Map<String, dynamic>> getTeamMemberLeaves(String userId) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/teams/my-team/leaves?tenant=$tenant';
@@ -2336,7 +2299,7 @@ class APIService {
 
   Future<Map<String, dynamic>> approveLeave(String leaveId) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/leave/$leaveId/approve?tenant=$tenant';
@@ -2356,7 +2319,7 @@ class APIService {
   Future<Map<String, dynamic>> rejectLeave(
       String leaveId, String reason) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/leave/$leaveId/reject?tenant=$tenant';
@@ -2376,7 +2339,7 @@ class APIService {
 
   Future<Map<String, dynamic>> approveTodo(String todoId) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/todos/$todoId/update?tenant=$tenant';
@@ -2394,14 +2357,14 @@ class APIService {
       }),
     );
 
-    print('[approveTodo] Response Body: ${response.body}');
+    debugPrint('[approveTodo] Response Body: ${response.body}');
     return _handleApiResponse(response, 'approveTodo');
   }
 
 
   Future<Map<String, dynamic>> rejectTodo(String todoId, String reason) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/todos/$todoId/update?tenant=$tenant';
@@ -2426,7 +2389,7 @@ class APIService {
   Future<Map<String, dynamic>> markAttendance(
       String userId, String date, String checkIn, String checkOut) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
     final appVer = await _getAppVersion();
 
@@ -2454,7 +2417,7 @@ class APIService {
 
   Future<Map<String, dynamic>> getTeamMemberAttendance(String userId) async {
     await storage.ready;
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
     final appVer = await _getAppVersion();
 

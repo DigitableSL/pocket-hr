@@ -4,15 +4,17 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 
 class HRController extends GetxController {
-  var latitude;
-  var longitude;
-  var address;
-  late StreamSubscription<Position> streamSubscription;
-  List location = [];
+  double? latitude;
+  double? longitude;
+  String? address;
+  StreamSubscription<Position>? streamSubscription;
+  List<Map<String, double?>> location = [];
+
   @override
-  void onInit() async {
+  void onInit() {
     super.onInit();
     getLocation();
   }
@@ -24,19 +26,17 @@ class HRController extends GetxController {
 
   @override
   void onClose() {
-    streamSubscription.cancel();
+    streamSubscription?.cancel();
+    super.onClose();
   }
 
-  getLocation() async {
-    bool serviceEnabled;
-
-    LocationPermission permission;
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  Future<void> getLocation() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       await Geolocator.openLocationSettings();
       return Future.error('Location services are disabled.');
     }
-    permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -47,31 +47,43 @@ class HRController extends GetxController {
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
-    streamSubscription =
-        Geolocator.getPositionStream().listen((Position position) {
+
+    await streamSubscription?.cancel();
+    streamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 15,
+      ),
+    ).listen((Position position) async {
+      final isClean = await SecurityService.verifyPosition(position);
+      if (!isClean) return;
+
       latitude = position.latitude;
       longitude = position.longitude;
-      var loc = {'latitude': latitude, 'longitude': longitude};
-      getAddressFromLatLang(position);
-      return location.add(loc);
+      final loc = {'latitude': latitude, 'longitude': longitude};
+      await getAddressFromLatLang(position);
+      location.add(loc);
     });
   }
 
-  Future<void> getAddressFromLatLang(Position position) async {
-    List<Placemark> placemark =
-        await placemarkFromCoordinates(position.latitude, position.longitude);
-    Placemark place = placemark[0];
-    address = '${place.locality},${place.country}';
+  Future<String?> getAddressFromLatLang(Position position) async {
+    try {
+      final placemark =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
+      if (placemark.isNotEmpty) {
+        final place = placemark.first;
+        address = '${place.locality ?? ''},${place.country ?? ''}';
+      }
+    } catch (_) {}
     return address;
   }
 
   String formatISOTime(DateTime date) {
-    var duration = date.timeZoneOffset;
-    if (duration.isNegative)
-      return (DateFormat("yyyy-MM-ddTHH:mm:ss").format(date) +
-          "-${duration.inHours.toString().padLeft(2, '0')}${(duration.inMinutes - (duration.inHours * 60)).toString().padLeft(2, '0')}");
-    else
-      return (DateFormat("yyyy-MM-ddTHH:mm:ss").format(date) +
-          "+${duration.inHours.toString().padLeft(2, '0')}${(duration.inMinutes - (duration.inHours * 60)).toString().padLeft(2, '0')}");
+    final duration = date.timeZoneOffset;
+    final sign = duration.isNegative ? '-' : '+';
+    final hours = duration.inHours.abs().toString().padLeft(2, '0');
+    final minutes =
+        (duration.inMinutes.abs() % 60).toString().padLeft(2, '0');
+    return '${DateFormat("yyyy-MM-ddTHH:mm:ss").format(date)}$sign$hours$minutes';
   }
 }

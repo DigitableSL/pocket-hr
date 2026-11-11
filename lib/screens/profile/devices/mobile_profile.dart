@@ -14,6 +14,7 @@ import 'package:cn_pocket_hr/helpers/hr_colors.dart';
 import 'package:cn_pocket_hr/helpers/custom_blur_hash.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:cn_pocket_hr/services/fcm_service.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class MobileProfile extends StatefulWidget {
   @override
@@ -175,8 +176,8 @@ class _MobileProfileState extends State<MobileProfile> {
 
   /// Auth headers for CachedNetworkImageProvider
   Map<String, String> _authHeaders() {
-    final oauthToken = storage.getItem('token')?.toString() ?? '';
-    final accessToken = storage.getItem('access_token')?.toString() ?? '';
+    final oauthToken = SecureTokenService.getOauthTokenSync();
+    final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
 
     return {

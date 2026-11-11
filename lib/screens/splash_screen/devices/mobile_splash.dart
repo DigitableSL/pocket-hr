@@ -13,6 +13,7 @@ import 'package:cn_pocket_hr/providers/locale_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'package:cn_pocket_hr/services/security_service.dart';
+import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class MobileSplash extends StatefulWidget {
   const MobileSplash({Key? key}) : super(key: key);
@@ -72,19 +73,21 @@ class _MobileSplashState extends State<MobileSplash>
   var saveLang = null;
 
   navigationPage() async {
-    // Check developer mode and mock location before doing anything else
+    // Check developer mode, auto date/time, and mock location before doing anything else
     final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
     if (!isSecure) return;
 
     await storage.ready;
+    await SecureTokenService.ensureInitialized();
     saveLang = storage.getItem('lang');
     setLanguage(saveLang);
 
     // Domex: require location permission before proceeding.
     // This doesn't change app routes; it's just a startup gate.
     if (FlavorConfig.instance.tenant.toString().toLowerCase() == 'domex') {
-  final granted = await showLocationPermissionDialog(context);
-  if (granted != true) return;
+      if (!mounted) return;
+      final granted = await showLocationPermissionDialog(context);
+      if (granted != true) return;
     }
 
     // Require both saved tenant + access token
@@ -97,6 +100,7 @@ class _MobileSplashState extends State<MobileSplash>
       if (hasSavedTenant && hasToken) {
         final me = await apiService.fetchMeProfileWithBearer();
         if (me != null) {
+          if (!mounted) return;
           Navigator.pushNamed(context, HRMain.routeName);
           return;
         }
@@ -105,9 +109,9 @@ class _MobileSplashState extends State<MobileSplash>
 
     // Default -> login screen
     try {
-      await storage.setItem('access_token', '');
-      await storage.setItem('refresh_token', '');
+      await SecureTokenService.clearTokens();
     } catch (_) {}
+    if (!mounted) return;
     Navigator.pushNamed(context, HRLogin.routeName);
   }
 
@@ -129,8 +133,7 @@ class _MobileSplashState extends State<MobileSplash>
   void autoLogin(email, password) async {
     // Legacy email/password auto-login removed. Proceed to login screen.
     try {
-      await storage.setItem('access_token', '');
-      await storage.setItem('refresh_token', '');
+      await SecureTokenService.clearTokens();
     } catch (_) {}
     if (!mounted) return;
     Navigator.pushNamed(context, HRLogin.routeName);
@@ -139,9 +142,7 @@ class _MobileSplashState extends State<MobileSplash>
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () {
-        return true as Future<bool>;
-      },
+      onWillPop: () async => true,
    child: Scaffold(
   backgroundColor: HRColors.splashred,
   body: Container(
