@@ -136,6 +136,7 @@ jobs:
         if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
         run: |
           flutter build apk --release \
+            --android-skip-build-dependency-validation \
             --flavor ${{ steps.config.outputs.tenant }} \
             -t ${{ steps.config.outputs.target }} \
             --dart-define=tenant=${{ steps.config.outputs.tenant }} \
@@ -153,6 +154,7 @@ jobs:
         if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
         run: |
           flutter build appbundle --release \
+            --android-skip-build-dependency-validation \
             --flavor ${{ steps.config.outputs.tenant }} \
             -t ${{ steps.config.outputs.target }} \
             --dart-define=tenant=${{ steps.config.outputs.tenant }} \
