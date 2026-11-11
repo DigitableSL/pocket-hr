@@ -54,6 +54,9 @@ class MainActivity: FlutterActivity() {
                 "isMockLocation" -> {
                     result.success(isMockLocation())
                 }
+                "isAutoTimeEnabled" -> {
+                    result.success(isAutoTimeEnabled())
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -114,6 +117,32 @@ class MainActivity: FlutterActivity() {
             false
         } catch (e: Exception) {
             false
+        }
+    }
+
+    /**
+     * Checks if Automatic Date & Time and Automatic Time Zone are enabled on Android.
+     * Prevents users from manually altering device clock to tamper with attendance punches.
+     */
+    private fun isAutoTimeEnabled(): Boolean {
+        return try {
+            val autoTime = Settings.Global.getInt(
+                contentResolver,
+                Settings.Global.AUTO_TIME, 0
+            ) != 0
+
+            val autoTimeZone = try {
+                Settings.Global.getInt(
+                    contentResolver,
+                    Settings.Global.AUTO_TIME_ZONE, 1
+                ) != 0
+            } catch (e: Exception) {
+                true
+            }
+
+            autoTime && autoTimeZone
+        } catch (e: Exception) {
+            true
         }
     }
 

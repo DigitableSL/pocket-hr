@@ -1230,4 +1230,8 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get mockLocationDetectedError =>
       'போலி இருப்பிடம் (Mock Location) கண்டறியப்பட்டது. தயவுசெய்து அதை முடக்கி மீண்டும் உள்நுழையவும்.';
+
+  @override
+  String get autoTimeRequiredError =>
+      'தானியங்கி தேதி மற்றும் நேரம் (Automatic Date & Time) முடக்கப்பட்டுள்ளது. அமைப்புகளில் அதை இயக்கி மீண்டும் உள்நுழையவும்.';
 }

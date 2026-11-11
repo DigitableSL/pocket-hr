@@ -1213,4 +1213,8 @@ class AppLocalizationsSi extends AppLocalizations {
   @override
   String get mockLocationDetectedError =>
       'ව්‍යාජ ස්ථානයක් (Mock Location) හඳුනාගෙන ඇත. කරුණාකර එය අක්‍රිය කර නැවත ලොග් වන්න.';
+
+  @override
+  String get autoTimeRequiredError =>
+      'ස්වයංක්‍රීය දිනය සහ වේලාව (Automatic Date & Time) අක්‍රිය කර ඇත. කරුණාකර දුරකථන සැකසුම් වෙත ගොස් එය සක්‍රිය කර නැවත ලොග් වන්න.';
 }

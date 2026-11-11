@@ -40,14 +40,10 @@ class TimeValidator {
 
       if (serverTime == null) return;
 
-      // Convert both to Sri Lanka timezone (UTC + 5:30)
-      final serverSLTime = serverTime.toUtc().add(const Duration(hours: 5, minutes: 30));
-      final deviceSLTime = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
-
-      // Compare difference with 3 minute (180 seconds) accuracy
-      final difference = deviceSLTime.difference(serverSLTime).inSeconds.abs();
+      // Compare difference in UTC with 3 minute (180 seconds) accuracy
+      final difference = DateTime.now().toUtc().difference(serverTime.toUtc()).inSeconds.abs();
       
-      debugPrint('[TimeValidator] Server time (SL): $serverSLTime, Device time (SL): $deviceSLTime, Diff: $difference seconds');
+      debugPrint('[TimeValidator] Server time (UTC): ${serverTime.toUtc()}, Device time (UTC): ${DateTime.now().toUtc()}, Diff: $difference seconds');
 
       if (difference > 180) { // 3 minutes = 180 seconds
         _isLoggingOut = true;

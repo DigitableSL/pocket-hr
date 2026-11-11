@@ -12,6 +12,7 @@ import 'package:geocoding/geocoding.dart';
  import 'package:geolocator/geolocator.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:cn_pocket_hr/services/offline_attendance_service.dart';
+import 'package:cn_pocket_hr/services/security_service.dart';
 import 'package:octo_image/octo_image.dart';
 import 'package:cn_pocket_hr/constants/slideanimation.dart';
 import 'package:cn_pocket_hr/screens/notifications/notifications.dart';
@@ -225,6 +226,12 @@ class _MobileHomeState extends State<MobileHome> with TickerProviderStateMixin {
   }
 
   checkinCheckout(type, {bool isRemote = false}) async {
+    final isSecure = await SecurityService.verifyDeviceSecurity(
+      currentPosition: _currentPosition,
+      context: context,
+    );
+    if (!isSecure) return;
+
     DateTime getCurrentTimestamp = DateTime.now();
     String date = controller.formatISOTime(getCurrentTimestamp);
 
@@ -391,6 +398,7 @@ class _MobileHomeState extends State<MobileHome> with TickerProviderStateMixin {
     return bgImg;
   }
 
+  Position? _currentPosition;
   var latitude;
   var longitude;
   var address;
@@ -424,6 +432,7 @@ class _MobileHomeState extends State<MobileHome> with TickerProviderStateMixin {
     }
     streamSubscription =
         Geolocator.getPositionStream().listen((Position position) {
+      _currentPosition = position;
       latitude = position.latitude;
       longitude = position.longitude;
       accuracy = position.accuracy;

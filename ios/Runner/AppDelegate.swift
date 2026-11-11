@@ -32,6 +32,8 @@ import CoreLocation
           result(self.isDevModeEnabled())
         } else if call.method == "isMockLocation" {
           result(self.isMockLocation())
+        } else if call.method == "isAutoTimeEnabled" {
+          result(true)
         } else {
           result(FlutterMethodNotImplemented)
         }

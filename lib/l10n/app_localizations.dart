@@ -2391,6 +2391,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.'**
   String get mockLocationDetectedError;
+
+  /// No description provided for @autoTimeRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic Date & Time is disabled. Please enable \'Set time automatically\' in your device settings to use this app.'**
+  String get autoTimeRequiredError;
 }
 
 class _AppLocalizationsDelegate

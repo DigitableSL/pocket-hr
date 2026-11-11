@@ -1211,4 +1211,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get mockLocationDetectedError =>
       'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.';
+
+  @override
+  String get autoTimeRequiredError =>
+      'Automatic Date & Time is disabled. Please enable \'Set time automatically\' in your device settings to use this app.';
 }

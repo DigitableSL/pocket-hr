@@ -527,5 +527,6 @@
   },
   "todoDirectManagerApprovalRequired": "You must be the direct manager of this employee to approve this request.",
   "developerModeDetectedError": "Developer options / USB debugging detected. Please turn off Developer Options in your device settings to use this app.",
-  "mockLocationDetectedError": "Mock / Fake location detected. Please disable mock location apps in your device settings to use this app."
+  "mockLocationDetectedError": "Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.",
+  "autoTimeRequiredError": "Automatic Date & Time is disabled. Please enable 'Set time automatically' in your device settings to use this app."
 } 
