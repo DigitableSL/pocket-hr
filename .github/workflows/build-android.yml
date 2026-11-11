@@ -1,0 +1,178 @@
+name: Build Android APK / Play Store
+
+on:
+  push:
+    branches:
+      - domex
+      - human-v2
+  workflow_dispatch:
+    inputs:
+      tenant:
+        description: 'Select tenant/flavor to build'
+        required: true
+        default: 'domex'
+        type: choice
+        options:
+          - domex
+          - malkey
+          - mahajana
+          - digitable
+      build_format:
+        description: 'Build format (apk for direct install, appbundle for Play Store, or both)'
+        required: true
+        default: 'apk'
+        type: choice
+        options:
+          - apk
+          - appbundle
+          - both
+      deploy_to_play_store:
+        description: 'Upload AAB to Google Play Store track (requires Play Store & Keystore secrets)'
+        required: false
+        default: false
+        type: boolean
+      play_store_track:
+        description: 'Google Play Store track'
+        required: false
+        default: 'internal'
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+
+jobs:
+  build-android:
+    name: Build Android (${{ github.event.inputs.tenant || 'domex' }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Determine Tenant, Package Name, and Build Options
+        id: config
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TENANT="${{ github.event.inputs.tenant }}"
+            FORMAT="${{ github.event.inputs.build_format }}"
+            DEPLOY="${{ github.event.inputs.deploy_to_play_store }}"
+            TRACK="${{ github.event.inputs.play_store_track }}"
+          else
+            TENANT="domex"
+            FORMAT="apk"
+            DEPLOY="false"
+            TRACK="internal"
+          fi
+
+          # If deploying to Play Store, ensure appbundle is built
+          if [ "$DEPLOY" = "true" ] && [ "$FORMAT" = "apk" ]; then
+            FORMAT="both"
+          fi
+
+          case "$TENANT" in
+            domex)
+              PACKAGE_NAME="io.digitable.go.domex.human"
+              ;;
+            malkey)
+              PACKAGE_NAME="io.digitable.go.malkey.human"
+              ;;
+            mahajana)
+              PACKAGE_NAME="io.digitable.go.mahajana.human"
+              ;;
+            digitable)
+              PACKAGE_NAME="asia.ceynet.human.pocket"
+              ;;
+            *)
+              PACKAGE_NAME="io.digitable.go.domex.human"
+              ;;
+          esac
+
+          echo "tenant=$TENANT" >> $GITHUB_OUTPUT
+          echo "target=lib/main_${TENANT}.dart" >> $GITHUB_OUTPUT
+          echo "format=$FORMAT" >> $GITHUB_OUTPUT
+          echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
+          echo "track=$TRACK" >> $GITHUB_OUTPUT
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Configure Android Release Signing (if secrets provided)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "Configuring production release keystore from GitHub Secrets..."
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+            cat <<EOF > android/key.properties
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret found — falling back to debug-signed release build for easy device testing."
+          fi
+
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+
+      - name: Build Release APK
+        if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
+        run: |
+          flutter build apk --release \
+            --flavor ${{ steps.config.outputs.tenant }} \
+            -t ${{ steps.config.outputs.target }} \
+            --dart-define=tenant=${{ steps.config.outputs.tenant }} \
+            --build-number=${{ github.run_number }}
+
+      - name: Upload APK Artifact
+        if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-${{ steps.config.outputs.tenant }}-release-b${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-${{ steps.config.outputs.tenant }}-release.apk
+          if-no-files-found: error
+
+      - name: Build Release App Bundle (AAB) for Play Store
+        if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
+        run: |
+          flutter build appbundle --release \
+            --flavor ${{ steps.config.outputs.tenant }} \
+            -t ${{ steps.config.outputs.target }} \
+            --dart-define=tenant=${{ steps.config.outputs.tenant }} \
+            --build-number=${{ github.run_number }}
+
+      - name: Upload AAB Artifact
+        if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-${{ steps.config.outputs.tenant }}-release-b${{ github.run_number }}
+          path: build/app/outputs/bundle/${{ steps.config.outputs.tenant }}Release/app-${{ steps.config.outputs.tenant }}-release.aab
+          if-no-files-found: error
+
+      - name: Deploy AAB to Google Play Console
+        if: steps.config.outputs.deploy == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ steps.config.outputs.package_name }}
+          releaseFiles: build/app/outputs/bundle/${{ steps.config.outputs.tenant }}Release/app-${{ steps.config.outputs.tenant }}-release.aab
+          track: ${{ steps.config.outputs.track }}
+          status: completed
+
