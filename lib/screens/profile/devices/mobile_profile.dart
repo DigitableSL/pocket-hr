@@ -17,6 +17,8 @@ import 'package:cn_pocket_hr/services/fcm_service.dart';
 import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class MobileProfile extends StatefulWidget {
+  const MobileProfile({Key? key}) : super(key: key);
+
   @override
   _MobileProfileState createState() => _MobileProfileState();
 }

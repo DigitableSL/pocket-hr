@@ -10,6 +10,8 @@ import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 
 class MobileAllowancesDeductionsScreen extends StatefulWidget {
+  const MobileAllowancesDeductionsScreen({Key? key}) : super(key: key);
+
   @override
   State<MobileAllowancesDeductionsScreen> createState() =>
       _MobileAllowancesDeductionsScreenState();

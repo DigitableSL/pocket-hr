@@ -20,7 +20,7 @@ import 'package:cn_pocket_hr/models/hr/me_model.dart';
 import 'package:cn_pocket_hr/screens/leave/devices/mobile_leave_request_page.dart';
 
 class MobileLeave extends StatefulWidget {
-  MobileLeave({Key? key}) : super(key: key);
+  const MobileLeave({Key? key}) : super(key: key);
 
   @override
   MobileLeaveState createState() => MobileLeaveState();

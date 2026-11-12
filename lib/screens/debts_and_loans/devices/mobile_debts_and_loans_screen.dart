@@ -9,6 +9,8 @@ import 'package:cn_pocket_hr/models/hr/debt_model.dart';
 import 'package:cn_pocket_hr/helpers/design_config.dart';
 
 class MobileDebtsAndLoansScreen extends StatefulWidget {
+  const MobileDebtsAndLoansScreen({Key? key}) : super(key: key);
+
   @override
   State<MobileDebtsAndLoansScreen> createState() =>
       _MobileDebtsAndLoansScreenState();
