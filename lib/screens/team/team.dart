@@ -1,10 +1,6 @@
-import 'package:flutter/src/foundation/key.dart';
-import 'package:flutter/src/widgets/framework.dart';
+import 'package:flutter/material.dart';
 import 'package:cn_pocket_hr/screens/team/devices/mobile_team.dart';
-import 'package:cn_pocket_hr/screens/team/devices/tablet_team.dart';
 import 'package:cn_pocket_hr/ui/responsive_layout.dart';
-import 'package:localstorage/localstorage.dart';
-
 
 class HRTeam extends StatefulWidget {
   static String routeName = "/team";
@@ -18,15 +14,8 @@ class HRTeam extends StatefulWidget {
 class _HRTeamState extends State<HRTeam> {
   @override
   Widget build(BuildContext context) {
-
-    final LocalStorage storage = LocalStorage('pocketHR');
-   // final String activeId = storage.getItem('uid')?.toString() ?? 'owner_001';
-  //    final String activeId = 'owner_001';
-
-
-    return ResponsiveLayout(
+    return const ResponsiveLayout(
       mobileBody: MobileTeam(),
-      tabletBody: TabletTeam(),  
     );
   }
 }

@@ -1,7 +1,5 @@
-import 'package:flutter/src/foundation/key.dart';
-import 'package:flutter/src/widgets/framework.dart';
+import 'package:flutter/material.dart';
 import 'package:cn_pocket_hr/screens/top_bar/devices/mobile_top_bar.dart';
-import 'package:cn_pocket_hr/screens/top_bar/devices/tablet_top_bar.dart';
 import 'package:cn_pocket_hr/ui/responsive_layout.dart';
 
 class TopBar extends StatefulWidget {
@@ -28,7 +26,6 @@ class _TopBarState extends State<TopBar> {
           extendBody: widget.extendBody,
           drawerScrimColor: widget.drawerScrimColor,
           drawer: widget.drawer),
-      tabletBody: TabletTopBar(),
     );
   }
 }

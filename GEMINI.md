@@ -8,17 +8,17 @@
 ## 2. Token Efficiency Rules (CRITICAL)
 1. **Never read entire large files**: Use `StartLine` and `EndLine` (or `grep -n` first) on large files:
    - `lib/api/api_service.dart` (~2,500 lines)
-   - `lib/Screens/team/devices/mobile_team.dart` & `tablet_team.dart` (~2,500 lines each)
-   - `lib/Screens/todos/devices/mobile_todos_screen.dart` & `tablet_todos_screen.dart` (~1,800 lines each)
+   - `lib/Screens/team/devices/mobile_team.dart` (~2,500 lines)
+   - `lib/Screens/todos/devices/mobile_todos_screen.dart` (~1,800 lines)
    - `lib/Screens/leave/devices/mobile_leave_request_page.dart` (~1,800 lines)
-   - `lib/Screens/home/devices/mobile_home.dart` & `tablet_home.dart` (~1,500 lines each)
-   - `lib/Screens/attendance/devices/mobile_attendance.dart` & `tablet_attendance.dart` (~1,500 lines each)
+   - `lib/Screens/home/devices/mobile_home.dart` (~1,500 lines)
+   - `lib/Screens/attendance/devices/mobile_attendance.dart` (~1,500 lines)
 2. **Never read generated files in full**:
    - Skip `lib/database/app_database.g.dart` (read `lib/database/app_database.dart` instead).
    - Skip `lib/l10n/app_localizations*.dart` (~6,100 lines total). Inspect `lib/l10n/app_en.arb`, `app_si.arb`, `app_ta.arb` and use targeted `grep -n` if manual edits to `app_localizations*.dart` are required.
    - Skip `pub_log.txt` and `pubspec.lock`.
-3. **Mobile + Tablet Parity**: Most screens under `lib/Screens/<feature>/devices/` have `mobile_<feature>.dart` and `tablet_<feature>.dart`. Locate exact line numbers via `grep -n` before reading or editing both.
-4. **concise responses**: Keep explanations brief and link directly to modified symbols/lines.
+3. **Constraint-Based Responsiveness**: Screens under `lib/Screens/<feature>/devices/mobile_<feature>.dart` serve both mobile and tablet/foldable devices via `ResponsiveLayout` (`lib/ui/responsive_layout.dart`), which centers and constrains width (`<= 600dp`) with an adjusted `MediaQuery` size on tablets.
+4. **Concise responses**: Keep explanations brief and link directly to modified symbols/lines.
 
 ## 3. Architecture Quick Map (Avoid Broad Searches)
 - **Native MethodChannel (`asia.ceynet.pocket/security`)**:
@@ -35,4 +35,3 @@
   - `lib/helpers/time_validator.dart`: Checks server HTTP `Date` / `timestamp` vs device UTC clock (180s max drift).
   - `lib/helpers/session_validator.dart`: Handles 401/419 expiration while deferring to silent refresh when `refresh_token` is present.
   - `lib/helpers/logout.dart`: `LogoutHelper.logout()` and `LogoutHelper.forceLogout()` (wipes storage + secure storage).
-

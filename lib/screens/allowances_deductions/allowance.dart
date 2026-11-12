@@ -1,5 +1,4 @@
 import 'package:cn_pocket_hr/screens/allowances_deductions/devices/mobile_allowances_deductions_screen.dart';
-import 'package:cn_pocket_hr/screens/allowances_deductions/devices/tablet_allowances_deductions_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cn_pocket_hr/ui/responsive_layout.dart';
 
@@ -14,9 +13,8 @@ class HRAllowancesDeductions extends StatefulWidget {
 class _HRAllowancesDeductionsState extends State<HRAllowancesDeductions> {
   @override
   Widget build(BuildContext context) {
-    return ResponsiveLayout(
+    return const ResponsiveLayout(
       mobileBody: MobileAllowancesDeductionsScreen(),
-      tabletBody: TabletAllowancesDeductionsScreen(),
     );
   }
 }

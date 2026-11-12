@@ -316,45 +316,54 @@ class PocketHR extends StatelessWidget {
             initialRoute: SplashScreen.routeName,
             routes: routes,
             builder: (context, widget) {
-              return Stack(
-                children: [
-                  if (widget != null) widget,
-                  if (conn.showBanner)
-                    Positioned(
-                      top: MediaQuery.of(context).padding.top,
-                      left: 0,
-                      right: 0,
-                      child: Material(
-                        color: conn.isOnline ? Colors.green : Colors.red,
-                        elevation: 6,
-                        child: Container(
-                          width: 12,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 6, horizontal: 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AutoSizeText(
-                                conn.isOnline
-                                    ? (conn.isWifi
-                                        ? 'Connected Wi-Fi'
-                                        : (conn.isMobile
-                                            ? 'Connected  Mobile Data'
-                                            : 'Connected'))
-                                    : AppLocalizations.of(context)!
-                                        .noInternetConnection,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 16),
-                              ),
-                            ],
+              final mediaQuery = MediaQuery.of(context);
+              return MediaQuery(
+                data: mediaQuery.copyWith(
+                  textScaler: mediaQuery.textScaler.clamp(
+                    minScaleFactor: 0.85,
+                    maxScaleFactor: 1.15,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    if (widget != null) widget,
+                    if (conn.showBanner)
+                      Positioned(
+                        top: mediaQuery.padding.top,
+                        left: 0,
+                        right: 0,
+                        child: Material(
+                          color: conn.isOnline ? Colors.green : Colors.red,
+                          elevation: 6,
+                          child: Container(
+                            width: 12,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                AutoSizeText(
+                                  conn.isOnline
+                                      ? (conn.isWifi
+                                          ? 'Connected Wi-Fi'
+                                          : (conn.isMobile
+                                              ? 'Connected  Mobile Data'
+                                              : 'Connected'))
+                                      : AppLocalizations.of(context)!
+                                          .noInternetConnection,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 16),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               );
             },
           );

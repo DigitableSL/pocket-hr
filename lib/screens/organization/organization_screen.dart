@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cn_pocket_hr/screens/organization/devices/mobile_organization.dart';
-import 'package:cn_pocket_hr/screens/organization/devices/tablet_organization.dart';
 import 'package:cn_pocket_hr/ui/responsive_layout.dart';
 
 class HROrganization extends StatefulWidget {
@@ -17,7 +16,6 @@ class _HROrganizationState extends State<HROrganization> {
   Widget build(BuildContext context) {
     return const ResponsiveLayout(
       mobileBody: MobileOrganization(),
-      tabletBody: TabletOrganization(),
     );
   }
 }

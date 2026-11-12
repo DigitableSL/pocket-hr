@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cn_pocket_hr/screens/home/devices/mobile_home.dart';
-import 'package:cn_pocket_hr/screens/home/devices/tablet_home.dart';
 import 'package:cn_pocket_hr/ui/responsive_layout.dart';
 
 class HRHome extends StatefulWidget {
@@ -14,9 +13,8 @@ class HRHome extends StatefulWidget {
 class _HRHomeState extends State<HRHome> {
   @override
   Widget build(BuildContext context) {
-    return ResponsiveLayout(
+    return const ResponsiveLayout(
       mobileBody: MobileHome(),
-      tabletBody: TabletHome(),
     );
   }
 }
