@@ -2,32 +2,24 @@ import 'dart:async';
 
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
 
-class HRController extends GetxController {
+class HRController {
   double? latitude;
   double? longitude;
   String? address;
   StreamSubscription<Position>? streamSubscription;
   List<Map<String, double?>> location = [];
 
-  @override
   void onInit() {
-    super.onInit();
     getLocation();
   }
 
-  @override
-  void onReady() {
-    super.onReady();
-  }
+  void onReady() {}
 
-  @override
   void onClose() {
     streamSubscription?.cancel();
-    super.onClose();
   }
 
   Future<void> getLocation() async {

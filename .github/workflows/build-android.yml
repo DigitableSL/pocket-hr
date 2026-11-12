@@ -134,28 +134,31 @@ jobs:
       - name: Install Flutter Dependencies
         run: flutter pub get
 
-      - name: Build Release APK
+      - name: Build Release APK (Split per ABI)
         if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
         run: |
           flutter build apk --release \
+            --split-per-abi \
+            --tree-shake-icons \
             --android-skip-build-dependency-validation \
             --flavor ${{ steps.config.outputs.tenant }} \
             -t ${{ steps.config.outputs.target }} \
             --dart-define=tenant=${{ steps.config.outputs.tenant }} \
             --build-number=${{ github.run_number }}
 
-      - name: Upload APK Artifact
+      - name: Upload APK Artifact (arm64-v8a)
         if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
         uses: actions/upload-artifact@v7
         with:
-          name: apk-${{ steps.config.outputs.tenant }}-release-b${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-${{ steps.config.outputs.tenant }}-release.apk
+          name: apk-${{ steps.config.outputs.tenant }}-arm64-v8a-release-b${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-${{ steps.config.outputs.tenant }}-arm64-v8a-release.apk
           if-no-files-found: error
 
       - name: Build Release App Bundle (AAB) for Play Store
         if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
         run: |
           flutter build appbundle --release \
+            --tree-shake-icons \
             --android-skip-build-dependency-validation \
             --flavor ${{ steps.config.outputs.tenant }} \
             -t ${{ steps.config.outputs.target }} \

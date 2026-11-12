@@ -120,6 +120,7 @@ jobs:
       - name: Build IPA
         run: |
           flutter build ipa --release \
+            --tree-shake-icons \
             -t ${{ steps.config.outputs.target }} \
             --dart-define=tenant=${{ steps.config.outputs.tenant }} \
             --export-method=${{ steps.config.outputs.export_method }} \
