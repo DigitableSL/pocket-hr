@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 enum Flavor { digitable, domex, mahajana, malkey }
@@ -208,4 +209,257 @@ class FlavorConfig {
   static bool get isDomex => instance.flavor == Flavor.domex;
   static bool get isMahajana => instance.flavor == Flavor.mahajana;
   static bool get isMalkey => instance.flavor == Flavor.malkey;
+
+  static void initDomex({String? packageName}) {
+    const Color primary = Color(0xFF6A1311); // Domex dark crimson red
+    const Color secondary = Color(0xffffcc09); // Domex gold
+    const Color iconFg = secondary;
+    const Color iconBg = Color(0xFF6A1311);
+
+    init(
+      flavor: Flavor.domex,
+      appName: 'My Domex',
+      apiBaseUrl: 'https://api.human.go.digitable.io/human/v2/api',
+      packageName: packageName ??
+          (defaultTargetPlatform == TargetPlatform.iOS
+              ? 'io.digitable.go.mydomex.human'
+              : 'io.digitable.go.domex.human'),
+      splashLogoAsset: 'assets/images/bg_remove_domex_app_logo.png',
+      primaryColor: primary,
+      secondaryColor: secondary,
+      morningBg: 'assets/images/domex_home-banner3.jpg',
+      afternoonBg: 'assets/images/domex_home-banner3.jpg',
+      eveningBg: 'assets/images/domex_home-banner3.jpg',
+      nightBg: 'assets/images/domex_home-banner3.jpg',
+      iconColor: iconFg,
+      iconBackgroundColor: iconBg,
+      tenant: 'domex',
+      tabColor: const Color(0xFF791b27),
+      tabLabelColor: secondary,
+      bottomNavIconColor: secondary,
+      bottomNavIconBgColor: const Color(0xFF791b27),
+      buttonColor: primary,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primary,
+          primary: primary,
+          secondary: secondary,
+        ),
+        primaryColor: primary,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: primary),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: primary,
+            side: const BorderSide(color: primary),
+          ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+        ),
+        textSelectionTheme:
+            const TextSelectionThemeData(cursorColor: Colors.white),
+        fontFamily: 'Poppins',
+      ),
+    );
+  }
+
+  static void initMahajana({String? packageName}) {
+    const Color primary = Color(0xFFC91032); // Mahajana red
+    const Color secondary = Color.fromARGB(255, 29, 67, 134); // Mahajana blue
+
+    init(
+      flavor: Flavor.mahajana,
+      appName: 'Mahajana HR',
+      apiBaseUrl: 'https://api.human.go.digitable.io/human/v2/api',
+      packageName: packageName ?? 'io.digitable.go.mahajana.human',
+      splashLogoAsset: 'assets/images/mahajana plash_logo.png',
+      primaryColor: primary,
+      secondaryColor: secondary,
+      morningBg: 'assets/images/mahajana_home.png',
+      afternoonBg: 'assets/images/mahajana_home.png',
+      eveningBg: 'assets/images/mahajana_home.png',
+      nightBg: 'assets/images/mahajana_home.png',
+      backgroundColor: const Color(0xFFF4F7FC),
+      containerShadowColor: const Color(0xFFE2E8F0),
+      lightWhiteColor: const Color(0xFFEBF2FC),
+      splashBackgroundColor: primary,
+      iconColor: primary,
+      iconBackgroundColor: const Color(0xFFFFEBEE),
+      tenant: 'mahajana',
+      tabColor: primary,
+      tabLabelColor: Colors.white,
+      bottomNavIconColor: Colors.white,
+      bottomNavIconBgColor: primary,
+      buttonColor: primary,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primary,
+          primary: primary,
+          secondary: secondary,
+        ),
+        primaryColor: primary,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(backgroundColor: primary),
+        ),
+        textSelectionTheme:
+            const TextSelectionThemeData(cursorColor: Colors.white),
+        fontFamily: 'Poppins',
+      ),
+    );
+  }
+
+  static void initMalkey({String? packageName}) {
+    const Color primary = Color(0xFF334C5F); // rgb(51, 76, 95) Deep Slate Blue
+    const Color secondary = Color(0xFF4F708B); // Slate accent
+    const Color cardColor = Colors.white;
+    const Color backgroundColor =
+        Color(0xFFEAEEF1); // rgb(234, 238, 241) Clean Ice Slate
+
+    init(
+      flavor: Flavor.malkey,
+      appName: 'Malkey HR',
+      apiBaseUrl: 'https://api.human.go.digitable.io/human/v2/api',
+      packageName: packageName ??
+          (defaultTargetPlatform == TargetPlatform.iOS
+              ? 'io.digitable.go.malkey.human'
+              : 'io.digitable.go.malkey.human'),
+      splashLogoAsset: 'assets/images/malkey_app_logo.png',
+      primaryColor: primary,
+      secondaryColor: secondary,
+      morningBg: 'assets/images/malkey-banner.jpg',
+      afternoonBg: 'assets/images/malkey-banner.jpg',
+      eveningBg: 'assets/images/malkey-banner.jpg',
+      nightBg: 'assets/images/malkey-banner.jpg',
+      backgroundColor: backgroundColor,
+      containerShadowColor: const Color(0xFFD2DCE2),
+      lightWhiteColor: const Color(0xFFEAEEF1),
+      splashBackgroundColor: primary,
+      cardColor: cardColor,
+      iconColor: primary,
+      iconBackgroundColor: const Color(0xFFEAEEF1),
+      tenant: 'malkey',
+      tabColor: primary,
+      tabLabelColor: Colors.white,
+      bottomNavIconColor: Colors.white,
+      bottomNavIconBgColor: primary,
+      bottomNavBarBgColor: Colors.grey.withOpacity(0.6),
+      buttonColor: primary,
+      brandPrimary: primary,
+      brandLight: const Color(0xFFEAEEF1),
+      brandDarkText: const Color(0xFF1F2D38),
+      brandGreyText: const Color(0xFF64748B),
+      brandBorder: const Color(0xFFD5DFE6),
+      brandAccent: const Color(0xFF4F708B),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primary,
+          primary: primary,
+          secondary: secondary,
+          surface: cardColor,
+        ),
+        primaryColor: primary,
+        cardColor: cardColor,
+        scaffoldBackgroundColor: backgroundColor,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primary,
+            foregroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: primary),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: primary,
+            side: const BorderSide(color: primary),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
+        ),
+        cardTheme: const CardThemeData(
+          color: cardColor,
+          elevation: 1,
+        ),
+        textSelectionTheme: const TextSelectionThemeData(cursorColor: primary),
+        fontFamily: 'Poppins',
+      ),
+    );
+  }
+
+  static void initDigitable({String? packageName}) {
+    const Color primary = Color(0xFF2D67CC); // Digitable blue
+    const Color secondary = Color(0xFFFF6F00); // Digitable orange
+
+    init(
+      flavor: Flavor.digitable,
+      appName: 'Pocket HR',
+      apiBaseUrl: 'https://api.human.go.digitable.io/human/v2/api',
+      packageName: packageName ?? 'asia.ceynet.human.pocket',
+      splashLogoAsset: 'assets/images/app_logo.png',
+      primaryColor: primary,
+      secondaryColor: secondary,
+      morningBg:
+          "https://www.farmersalmanac.com/wp-content/uploads/2020/11/Earliest-Sunrise-June-A191879830.jpg",
+      afternoonBg:
+          "https://www.farmersalmanac.com/wp-content/uploads/2020/11/Earliest-Sunrise-June-A191879830.jpg",
+      eveningBg:
+          "https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/sunset-quotes-21-1586531574.jpg",
+      nightBg: "https://wallpaperaccess.com/full/2113857.jpg",
+      backgroundColor: const Color(0xFFF4F7FC),
+      containerShadowColor: const Color(0xFFE2E8F0),
+      lightWhiteColor: const Color(0xFFEBF2FC),
+      splashBackgroundColor: const Color(0xFF2D67CC),
+      iconColor: primary,
+      iconBackgroundColor: const Color(0xFFEBF2FC),
+      tenant: 'domex',
+      tabColor: primary,
+      tabLabelColor: Colors.white,
+      bottomNavIconColor: Colors.white,
+      bottomNavIconBgColor: primary,
+      buttonColor: primary,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primary,
+          primary: primary,
+          secondary: secondary,
+        ),
+        primaryColor: primary,
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(backgroundColor: primary),
+        ),
+        textSelectionTheme:
+            const TextSelectionThemeData(cursorColor: Colors.white),
+        fontFamily: 'Poppins',
+      ),
+    );
+  }
+
+  static void initFromPackageName(String packageName) {
+    if (packageName == 'io.digitable.go.domex.human' ||
+        packageName == 'io.digitable.go.mydomex.human') {
+      initDomex(packageName: packageName);
+    } else if (packageName == 'io.digitable.go.mahajana.human') {
+      initMahajana(packageName: packageName);
+    } else if (packageName == 'io.digitable.go.malkey.human') {
+      initMalkey(packageName: packageName);
+    } else {
+      initDigitable(packageName: packageName);
+    }
+  }
 }

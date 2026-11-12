@@ -16,48 +16,7 @@ Future<void> main() async {
         options: DigitableFirebaseOptions.currentPlatform);
   }
 
-  const Color primary = Color(0xFF2D67CC); // Digitable blue
-  const Color secondary = Color(0xFFFF6F00); // Digitable orange
-
-  FlavorConfig.init(
-    flavor: Flavor.digitable,
-    appName: 'Pocket HR',
-    apiBaseUrl: 'https://api.human.go.digitable.io/human/v2/api',
-    packageName: 'asia.ceynet.human.pocket',
-    splashLogoAsset: 'assets/images/app_logo.png',
-    primaryColor: primary,
-    secondaryColor: secondary,
-    morningBg: "https://www.farmersalmanac.com/wp-content/uploads/2020/11/Earliest-Sunrise-June-A191879830.jpg",
-    afternoonBg: "https://www.farmersalmanac.com/wp-content/uploads/2020/11/Earliest-Sunrise-June-A191879830.jpg",
-    eveningBg: "https://hips.hearstapps.com/hmg-prod.s3.amazonaws.com/images/sunset-quotes-21-1586531574.jpg",
-    nightBg: "https://wallpaperaccess.com/full/2113857.jpg",
-    backgroundColor: const Color(0xFFF4F7FC),
-    containerShadowColor: const Color(0xFFE2E8F0),
-    lightWhiteColor: const Color(0xFFEBF2FC),
-    splashBackgroundColor: const Color(0xFF2D67CC),
-    iconColor: primary,
-    iconBackgroundColor: const Color(0xFFEBF2FC),
-    tenant:'domex',
-    tabColor: primary,
-    tabLabelColor: Colors.white,
-    bottomNavIconColor: Colors.white,
-    bottomNavIconBgColor: primary,
-    buttonColor: primary,
-    theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        primary: primary,
-        secondary: secondary,
-      ),
-      primaryColor: primary,
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(backgroundColor: primary),
-      ),
-      textSelectionTheme:
-          const TextSelectionThemeData(cursorColor: Colors.white),
-      fontFamily: 'Poppins',
-    ),
-  );
+  FlavorConfig.initDigitable();
 
   runApp(PocketHR());
 }
