@@ -250,10 +250,10 @@ class _MobileProfileState extends State<MobileProfile> {
             ),
             AutoSizeText(
               AppLocalizations.of(context)!.myProfileTitle,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: HRColors.brandDarkText,
               ),
             ),
             GestureDetector(

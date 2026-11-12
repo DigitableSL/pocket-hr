@@ -18,7 +18,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cn_pocket_hr/screens/team/team.dart';
 
 class DesignConfig {
-  static const double defaultBorderRadius = 8.0;
+  static const double defaultBorderRadius = 14.0;
 
   static String getFriendlyErrorMessage(BuildContext context, Object? err) {
     if (err == null) return '';
@@ -212,6 +212,38 @@ class DesignConfig {
     }
 
     final currentRoute = ModalRoute.of(context)?.settings.name;
+    final Color brandPrimary = HRColors.brandPrimary;
+    final Color brandLight = HRColors.brandLight;
+    final Color brandDark = HRColors.brandDarkText;
+
+    String resolveUserName() {
+      final flat = (storage.getItem('name') ??
+              storage.getItem('username') ??
+              storage.getItem('userName') ??
+              '')
+          .toString()
+          .trim();
+      if (flat.isNotEmpty) return flat;
+      final profile = storage.getItem('me_profile');
+      if (profile is Map) {
+        final d = profile['data'] ?? profile['result'] ?? profile['user'] ?? profile;
+        if (d is Map) {
+          final fn = (d['name'] ?? d['full_name'] ?? d['first_name'] ?? '').toString().trim();
+          if (fn.isNotEmpty) return fn;
+        }
+      }
+      return AppLocalizations.of(context)!.menuText;
+    }
+
+    String resolveSubtitle() {
+      final comp = (storage.getItem('company') ??
+              storage.getItem('tenant') ??
+              FlavorConfig.instance.name)
+          .toString()
+          .trim();
+      if (comp.isEmpty) return '';
+      return comp[0].toUpperCase() + comp.substring(1);
+    }
 
     Widget buildTile({
       required IconData icon,
@@ -219,37 +251,62 @@ class DesignConfig {
       required bool isSelected,
       required VoidCallback onTap,
     }) {
-      const selectedBg = Color(0xFF1B172E);
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
         decoration: BoxDecoration(
-          color: isSelected ? selectedBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? brandPrimary : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: brandPrimary.withOpacity(0.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [],
         ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 22,
-                  color: isSelected ? Colors.white : Colors.black,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.18)
+                        : brandLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 19,
+                    color: isSelected ? Colors.white : brandPrimary,
+                  ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: AutoSizeText(
                     title,
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isSelected ? Colors.white : Colors.black,
+                      fontSize: 15,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: isSelected ? Colors.white : brandDark,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.85)
+                      : Colors.black26,
                 ),
               ],
             ),
@@ -311,54 +368,20 @@ class DesignConfig {
       child: Container(
         width: 300,
         height: double.infinity,
-        decoration: BoxDecoration(
-          color: HRColors.white, // Your requested background color
-          boxShadow: const [
+        decoration: const BoxDecoration(
+          color: HRColors.white,
+          boxShadow: [
             BoxShadow(
               color: Colors.black26,
-              blurRadius: 12.0,
-              offset: Offset(3, 0),
+              blurRadius: 16.0,
+              offset: Offset(4, 0),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Container(
-              height: 70,
-              margin: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 8,
-                bottom: 8,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(10.0),
-                      decoration: DesignConfig.boxDecorationButtonColor(
-                          HRColors.white.withOpacity(0.9),
-                          HRColors.white.withOpacity(0.9),
-                          50),
-                      child: const Icon(Icons.close, color: HRColors.black),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  AutoSizeText(
-                    AppLocalizations.of(context)!.menuText,
-                    style: const TextStyle(
-                        fontSize: 20,
-                        color: HRColors.black,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  const Spacer(),
-                ],
-              ),
-            ),
-
-            // Menu List
+            // Menu List with User Profile Header inside FutureBuilder so storage is ready
             Expanded(
               child: FutureBuilder<bool>(
                 future: storage.ready,
@@ -366,6 +389,11 @@ class DesignConfig {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(child: CircularProgressIndicator());
                   }
+
+                  final userName = resolveUserName();
+                  final subtitle = resolveSubtitle();
+                  final initial =
+                      userName.isNotEmpty ? userName[0].toUpperCase() : 'U';
 
                   final profile = storage.getItem('me_profile') as Map<String, dynamic>?;
                   final data = profile != null ? profile['data'] as Map<String, dynamic>? : null;
@@ -397,14 +425,117 @@ class DesignConfig {
                     }
                   }
 
-                  return ListView(
-                    padding: const EdgeInsets.only(bottom: 20),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ...activeKeys
-                          .map((key) => buildMenuItem(key))
-                          .whereType<Widget>()
-                          .toList(),
-                      const _RefreshListTile(),
+                      // User Profile Header Card
+                      Container(
+                        margin: EdgeInsets.fromLTRB(
+                          14,
+                          MediaQuery.of(context).padding.top + 12,
+                          14,
+                          10,
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: brandLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: brandPrimary.withOpacity(0.10),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: brandPrimary,
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initial,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AutoSizeText(
+                                    userName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: brandDark,
+                                    ),
+                                  ),
+                                  if (subtitle.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: HRColors.brandGreyText,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.of(context).pop(),
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.black.withOpacity(0.06),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: brandDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.only(top: 4, bottom: 20),
+                          children: [
+                            ...activeKeys
+                                .map((key) => buildMenuItem(key))
+                                .whereType<Widget>()
+                                .toList(),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 8),
+                              child: Divider(
+                                height: 1,
+                                color: Colors.black.withOpacity(0.07),
+                              ),
+                            ),
+                            const _RefreshListTile(),
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 },
@@ -419,36 +550,39 @@ class DesignConfig {
                 16,
                 16 + MediaQuery.of(context).padding.bottom,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: HRColors.white,
+                border: Border(
+                  top: BorderSide(color: Colors.black.withOpacity(0.06)),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   langPicker(),
                   const SizedBox(height: 4),
-                  // Logout button styled like check-in/check-out
+                  // Logout button
                   GestureDetector(
                     onTap: () => LogoutHelper.logout(context),
                     child: Container(
                       height: 48,
                       decoration: BoxDecoration(
                         color: FlavorConfig.instance.primaryColor,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       alignment: Alignment.center,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.logout,
-                              color: Colors.white, size: 20),
+                          const Icon(Icons.logout_rounded,
+                              color: Colors.white, size: 19),
                           const SizedBox(width: 8),
                           AutoSizeText(
                             AppLocalizations.of(context)!.logoutText,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
@@ -470,8 +604,11 @@ class DesignConfig {
                       return Center(
                         child: AutoSizeText(
                           'App Version $version',
-                          style:
-                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[500],
+                          ),
                         ),
                       );
                     },
@@ -489,7 +626,7 @@ class DesignConfig {
       String text, String langCode) {
     final currentLang = provider.locale?.languageCode ?? 'en';
     final isSelected = currentLang == langCode;
-    const selectedBg = Color(0xFF1B172E);
+    final selectedBg = HRColors.brandPrimary;
 
     return Expanded(
       child: Padding(
@@ -501,15 +638,17 @@ class DesignConfig {
               provider.setLocale(Locale(langCode));
               storage.setItem('lang', langCode);
             },
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               height: 38,
               decoration: BoxDecoration(
-                color: isSelected ? selectedBg : Colors.black.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(14),
+                color: isSelected ? selectedBg : HRColors.brandLight,
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? selectedBg : Colors.black.withOpacity(0.08),
+                  color: isSelected
+                      ? selectedBg
+                      : HRColors.brandPrimary.withOpacity(0.10),
                   width: 1,
                 ),
               ),
@@ -517,9 +656,9 @@ class DesignConfig {
               child: AutoSizeText(
                 text,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black87,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 13.5,
+                  color: isSelected ? Colors.white : HRColors.brandDarkText,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  fontSize: 13,
                 ),
                 maxLines: 1,
               ),
@@ -687,33 +826,41 @@ class __RefreshListTileState extends State<_RefreshListTile>
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
       decoration: BoxDecoration(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: InkWell(
         onTap: _isRefreshing ? null : _onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              RotationTransition(
-                turns: _spinController,
-                child: const Icon(
-                  Icons.refresh,
-                  size: 22,
-                  color: Colors.black,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: HRColors.brandLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: RotationTransition(
+                  turns: _spinController,
+                  child: Icon(
+                    Icons.refresh_rounded,
+                    size: 19,
+                    color: HRColors.brandPrimary,
+                  ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: AutoSizeText(
                   _isRefreshing
                       ? AppLocalizations.of(context)!.refreshing
                       : AppLocalizations.of(context)!.refresh,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: HRColors.brandDarkText,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

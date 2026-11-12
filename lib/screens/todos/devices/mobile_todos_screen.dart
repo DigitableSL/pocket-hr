@@ -1416,15 +1416,15 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(_g12, _g16, _g12, _g8),
+              padding: const EdgeInsets.fromLTRB(_g16, _g12, _g16, 0),
               child: Row(
                 children: [
                   InkWell(
                     onTap: () => Navigator.of(context).maybePop(),
                     borderRadius: BorderRadius.circular(40),
                     child: Container(
-                      width: 44,
-                      height: 44,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: HRColors.flavorIconBackgroundColor ?? Colors.white,
                         borderRadius: BorderRadius.circular(40),
@@ -1442,7 +1442,7 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: _textBurgundy,
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1450,9 +1450,9 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
                 ],
               ),
             ),
-            const SizedBox(height: _g20),
+            const SizedBox(height: _g16),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _g12),
+              padding: const EdgeInsets.symmetric(horizontal: _g16),
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(

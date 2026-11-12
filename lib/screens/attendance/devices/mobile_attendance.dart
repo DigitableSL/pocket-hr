@@ -456,7 +456,7 @@ class _MobileAttendanceState extends State<MobileAttendance>
           AutoSizeText(
             AppLocalizations.of(context)!.myAttendance,
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               color: _textBurgundy,
             ),

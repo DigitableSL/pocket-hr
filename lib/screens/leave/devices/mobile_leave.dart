@@ -6,6 +6,7 @@ import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:intl/intl.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:cn_pocket_hr/constants/slideanimation.dart';
 import 'package:cn_pocket_hr/screens/leave/devices/card1.dart';
@@ -160,78 +161,104 @@ class MobileLeaveState extends State<MobileLeave>
 
     return Container(
       margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
-      decoration: BoxDecoration(
-        color: HRColors.brandLight,
-        borderRadius: BorderRadius.circular(DesignConfig.defaultBorderRadius),
-      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _balanceColumn(
+          _balanceCard(
             label: AppLocalizations.of(context)!.annualLabel.toUpperCase(),
-            value: '${formatVal(annualAvailable)}/${formatVal(annualQuota.toDouble())}',
-            valueColor: const Color(0xFF2E7D32),
+            available: annualAvailable,
+            quota: annualQuota.toDouble(),
+            textValue: '${formatVal(annualAvailable)}/${formatVal(annualQuota.toDouble())}',
+            accentColor: const Color(0xFF16A34A),
           ),
-          _balanceDivider(),
-          _balanceColumn(
+          const SizedBox(width: 8),
+          _balanceCard(
             label: AppLocalizations.of(context)!.casualLabel.toUpperCase(),
-            value: '${formatVal(casualAvailable)}/${formatVal(casualQuota.toDouble())}',
-            valueColor: _greyBrown,
+            available: casualAvailable,
+            quota: casualQuota.toDouble(),
+            textValue: '${formatVal(casualAvailable)}/${formatVal(casualQuota.toDouble())}',
+            accentColor: const Color(0xFFD97706),
           ),
-          _balanceDivider(),
-          _balanceColumn(
+          const SizedBox(width: 8),
+          _balanceCard(
             label: AppLocalizations.of(context)!.medicalLabel.toUpperCase(),
-            value: '${formatVal(medicalAvailable)}/${formatVal(medicalQuota.toDouble())}',
-            valueColor: _greyBrown,
+            available: medicalAvailable,
+            quota: medicalQuota.toDouble(),
+            textValue: '${formatVal(medicalAvailable)}/${formatVal(medicalQuota.toDouble())}',
+            accentColor: const Color(0xFF0284C7),
           ),
-          _balanceDivider(),
-          _balanceColumn(
+          const SizedBox(width: 8),
+          _balanceCard(
             label: AppLocalizations.of(context)!.totalLabel.toUpperCase(),
-            value: '${formatVal(totalAvailable)}/${formatVal(totalQuota.toDouble())}',
-            valueColor: _gold,
+            available: totalAvailable,
+            quota: totalQuota.toDouble(),
+            textValue: '${formatVal(totalAvailable)}/${formatVal(totalQuota.toDouble())}',
+            accentColor: _maroon,
           ),
         ],
       ),
     );
   }
 
-  Widget _balanceDivider() {
-    return Container(
-      width: 1,
-      height: 35,
-      color: _borderColor,
-    );
-  }
-
-  Widget _balanceColumn({
+  Widget _balanceCard({
     required String label,
-    required String value,
-    required Color valueColor,
+    required double available,
+    required double quota,
+    required String textValue,
+    required Color accentColor,
   }) {
+    final double ratio =
+        quota > 0 ? (available / quota).clamp(0.0, 1.0) : 0.0;
     return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AutoSizeText(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: _maroon,
-              letterSpacing: 0.5,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black.withOpacity(0.06)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
-          const SizedBox(height: 6),
-          AutoSizeText(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: valueColor,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AutoSizeText(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: _greyBrown,
+                letterSpacing: 0.4,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            AutoSizeText(
+              textValue,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: accentColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 5,
+                backgroundColor: accentColor.withOpacity(0.12),
+                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -512,7 +539,11 @@ class MobileLeaveState extends State<MobileLeave>
                     ),
                     AutoSizeText(
                       AppLocalizations.of(context)!.leaveText,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: HRColors.brandDarkText,
+                      ),
                     ),
                     GestureDetector(
                       onTap: () async {
@@ -930,6 +961,34 @@ class _LeaveHistoryCardWidgetState extends State<_LeaveHistoryCardWidget> {
     return raw;
   }
 
+  DateTime? _parseDdMmYyyy(String raw) {
+    try {
+      final parts = raw.split('/');
+      if (parts.length == 3) {
+        return DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String _formatReadableRange(String from, String to, int days) {
+    final fd = _parseDdMmYyyy(from);
+    final td = _parseDdMmYyyy(to);
+    if (fd != null && td != null) {
+      if (days > 1) {
+        return '${DateFormat('EEE, dd MMM').format(fd)} → ${DateFormat('EEE, dd MMM yyyy').format(td)}';
+      }
+      return DateFormat('EEE, dd MMM yyyy').format(fd);
+    }
+    return (days > 1 && from.isNotEmpty && to.isNotEmpty)
+        ? '$from - $to'
+        : from;
+  }
+
   @override
   Widget build(BuildContext context) {
     final model = widget.model;
@@ -951,151 +1010,257 @@ class _LeaveHistoryCardWidgetState extends State<_LeaveHistoryCardWidget> {
     final String tagLabel = days > 1
         ? durationLabel
         : (isHalfDay ? AppLocalizations.of(context)!.halfDay : AppLocalizations.of(context)!.fullDay);
-    final Color tagBg = isHalfDay ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9);
-    final Color tagFg = isHalfDay ? const Color(0xFFE65100) : const Color(0xFF2E7D32);
+    final Color tagBg = isHalfDay ? const Color(0xFFFFF3E0) : const Color(0xFFF1F5F9);
+    final Color tagFg = isHalfDay ? const Color(0xFFE65100) : const Color(0xFF334155);
 
     final status = model.status.toString().toLowerCase();
     String statusLabel = AppLocalizations.of(context)!.pendingLabel;
-    Color statusBg = const Color(0xFFFFF3E0);
-    Color statusFg = const Color(0xFFE65100);
+    Color statusBg = const Color(0xFFFFFBEB);
+    Color statusFg = const Color(0xFFD97706);
+    Color accentBarColor = const Color(0xFFF59E0B);
     IconData statusIcon = Icons.hourglass_empty_rounded;
 
     if (status == 'approved') {
       statusLabel = AppLocalizations.of(context)!.approvedLable;
-      statusBg = const Color(0xFFEAF7EE);
-      statusFg = const Color(0xFF2E7D32);
-      statusIcon = Icons.check_circle;
+      statusBg = const Color(0xFFECFDF5);
+      statusFg = const Color(0xFF15803D);
+      accentBarColor = const Color(0xFF16A34A);
+      statusIcon = Icons.check_circle_rounded;
     } else if (status == 'rejected') {
       statusLabel = AppLocalizations.of(context)!.rejectedLable;
-      statusBg = const Color(0xFFFFEBEE);
-      statusFg = const Color(0xFFC91032);
-      statusIcon = Icons.cancel;
+      statusBg = const Color(0xFFFEF2F2);
+      statusFg = const Color(0xFFB91C1C);
+      accentBarColor = const Color(0xFFEF4444);
+      statusIcon = Icons.cancel_rounded;
     }
 
+    final parsedStart = _parseDdMmYyyy(from);
+    final monthStr = parsedStart != null
+        ? DateFormat('MMM').format(parsedStart).toUpperCase()
+        : 'DAY';
+    final dayStr = parsedStart != null
+        ? DateFormat('dd').format(parsedStart)
+        : '$days';
+    final readableDates = _formatReadableRange(from, to, days);
+    final hasReason = model.description.trim().isNotEmpty;
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(DesignConfig.defaultBorderRadius),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(DesignConfig.defaultBorderRadius),
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Row 1: Type, Session Badge, Status Badge
-                Row(
-                  children: [
-                    AutoSizeText(
-                      _capitalize(typeLabel),
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: HRColors.brandPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: tagBg,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        tagLabel,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: tagFg,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(color: accentBarColor, width: 4),
+            ),
+          ),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Calendar Date Badge
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: HRColors.brandLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: HRColors.brandPrimary.withOpacity(0.14),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              monthStr,
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: HRColors.brandPrimary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              dayStr,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: HRColors.brandDarkText,
+                                height: 1.05,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 12),
+
+                      // Leave Type, Duration & Readable Date Range
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: AutoSizeText(
+                                    _capitalize(typeLabel),
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: HRColors.brandDarkText,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: tagBg,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    tagLabel,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: tagFg,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            AutoSizeText(
+                              readableDates,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: HRColors.brandGreyText,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (hasReason && !_isExpanded) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                model.description.trim(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: HRColors.brandGreyText.withOpacity(0.8),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                      child: Row(
+                      const SizedBox(width: 8),
+
+                      // Status Pill + Animated Expand Chevron
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(statusIcon, size: 14, color: statusFg),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(statusIcon, size: 13, color: statusFg),
+                                const SizedBox(width: 4),
+                                Text(
+                                  statusLabel,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: statusFg,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(width: 4),
+                          AnimatedRotation(
+                            turns: _isExpanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: HRColors.brandGreyText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (_isExpanded) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: HRColors.brandLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            statusLabel,
+                            'REASON',
                             style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: statusFg,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: HRColors.brandGreyText,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            hasReason ? model.description : 'No reason provided',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w500,
+                              color: HRColors.brandDarkText,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-                // Row 2: Date, Chevron
-                Row(
-                  children: [
-                    Expanded(
-                      child: AutoSizeText(
-                        (days > 1 && from.isNotEmpty && to.isNotEmpty)
-                            ? '$from - $to'
-                            : (from.isNotEmpty ? from : ''),
-                        style: TextStyle(
-                          color: HRColors.brandGreyText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_isExpanded) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: HRColors.brandLight,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'REASON',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: HRColors.brandGreyText,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          model.description.isNotEmpty ? model.description : 'No reason provided',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: HRColors.brandDarkText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
         ),

@@ -60,6 +60,7 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
   late Future<List<MyLeavesModel>> _myLeavesFuture;
   late Future<Map<String, dynamic>?> _leaveBalanceFuture;
   late Future<List<dynamic>> _combinedFuture;
+  Map<String, dynamic>? _balanceData;
   LeaveApplyEligibility? _eligibility;
   bool _isSubmitting = false;
 
@@ -68,6 +69,13 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
     super.initState();
     _myLeavesFuture = LeaveService.getMyLeaves();
     _leaveBalanceFuture = apiService.getLeaveBalance();
+    _leaveBalanceFuture.then((val) {
+      if (val != null && mounted) {
+        setState(() {
+          _balanceData = val;
+        });
+      }
+    });
     _combinedFuture = Future.wait([_myLeavesFuture, _leaveBalanceFuture]);
     apiService.getLeaveApplyEligibility().then((val) {
       if (val != null && mounted) {
@@ -637,22 +645,444 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
     return true;
   }
 
+  String _getLiveDurationBadge() {
+    if (leaveTypeValue == 'half') {
+      return AppLocalizations.of(context)!.halfDay;
+    }
+    if (leaveTypeValue == 'short_leave') {
+      return AppLocalizations.of(context)!.shortLeave;
+    }
+    final fOnly = DateTime(fDate.year, fDate.month, fDate.day);
+    final tOnly = DateTime(tDate.year, tDate.month, tDate.day);
+    final diff = tOnly.difference(fOnly).inDays + 1;
+    final days = diff > 0 ? diff : 1;
+    return days == 1
+        ? '1 ${AppLocalizations.of(context)!.day}'
+        : '$days ${AppLocalizations.of(context)!.days}';
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 8),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+          color: _textMuted,
+          letterSpacing: 0.7,
+        ),
+      ),
+    );
+  }
+
+  String? _getCategoryQuotaBadge(String typeKey) {
+    if (_balanceData == null) return null;
+    final balMap = (_balanceData!['balance'] ?? _balanceData!['available']) as Map?;
+    final quotaMap = (_balanceData!['quota'] ?? _balanceData!['leave_quota']) as Map?;
+    final avail = balMap != null ? balMap[typeKey] : null;
+    final quota = quotaMap != null ? quotaMap[typeKey] : null;
+    if (avail == null) return null;
+    String fmt(dynamic v) {
+      if (v is num) {
+        return v == v.toInt() ? v.toInt().toString() : v.toString();
+      }
+      return v.toString();
+    }
+    if (quota != null) {
+      return '${fmt(avail)} / ${fmt(quota)}';
+    }
+    return fmt(avail);
+  }
+
+  Widget _buildCategorySelector(bool readOnly) {
+    final icons = <String, IconData>{
+      'annual': Icons.beach_access_rounded,
+      'casual': Icons.wb_sunny_rounded,
+      'medical': Icons.medical_services_outlined,
+    };
+
+    return Row(
+      children: leaveTypeList.map((typeKey) {
+        final isSelected = typeValue == typeKey;
+        final quotaStr = _getCategoryQuotaBadge(typeKey);
+        final icon = icons[typeKey] ?? Icons.event_note_rounded;
+
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: typeKey == leaveTypeList.last ? 0 : 8,
+            ),
+            child: InkWell(
+              onTap: (readOnly || leaveTypeValue == 'short_leave')
+                  ? null
+                  : () => setState(() => typeValue = typeKey),
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? HRColors.tabColor.withOpacity(0.10)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected
+                        ? HRColors.tabColor
+                        : Colors.grey.shade200,
+                    width: isSelected ? 1.8 : 1.0,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: HRColors.tabColor.withOpacity(0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          )
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? HRColors.tabColor
+                                : _accent.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            icon,
+                            size: 14,
+                            color: isSelected
+                                ? HRColors.tabLabelColor
+                                : _accent,
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle_rounded,
+                            size: 15,
+                            color: HRColors.tabColor,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    AutoSizeText(
+                      _getLeaveTypeLabel(typeKey),
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        color: isSelected ? HRColors.brandPrimary : _textDark,
+                      ),
+                    ),
+                    if (quotaStr != null) ...[
+                      const SizedBox(height: 2),
+                      AutoSizeText(
+                        quotaStr,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10.5,
+                          color: isSelected
+                              ? const Color(0xFF15803D)
+                              : _textMuted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildUnifiedDateCard(bool readOnly) {
+    final isRange = leaveTypeValue == 'full_day';
+    final fFormatted = DateFormat('EEE, dd MMM').format(fDate);
+    final tFormatted = DateFormat('EEE, dd MMM').format(tDate);
+    final fYear = DateFormat('yyyy').format(fDate);
+    final tYear = DateFormat('yyyy').format(tDate);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: isRange
+          ? Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: readOnly
+                        ? null
+                        : () async {
+                            final picked =
+                                await _pickWheelDate(initial: fDate);
+                            if (picked == null) return;
+                            if (!_validatePickedDate(picked)) return;
+                            setState(() {
+                              fDate = picked;
+                              if (tDate.isBefore(fDate)) {
+                                tDate = fDate;
+                                toText =
+                                    DateFormat('dd/MM/yyyy').format(tDate);
+                              }
+                              fromText =
+                                  DateFormat('dd/MM/yyyy').format(picked);
+                            });
+                          },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today_rounded,
+                                size: 12, color: _accent),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)!
+                                  .fromLabel
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: _textMuted,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        AutoSizeText(
+                          fFormatted,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: _textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          fYear,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _accent.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _getLiveDurationBadge(),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: HRColors.brandPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Icon(Icons.arrow_forward_rounded,
+                          size: 15, color: Colors.grey.shade400),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: readOnly
+                        ? null
+                        : () async {
+                            final picked =
+                                await _pickWheelDate(initial: tDate);
+                            if (picked == null) return;
+                            if (!_validatePickedDate(picked)) return;
+                            setState(() {
+                              tDate = picked;
+                              toText =
+                                  DateFormat('dd/MM/yyyy').format(picked);
+                            });
+                          },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Icon(Icons.event_rounded,
+                                size: 12, color: _accent),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context)!
+                                  .toLabel
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: _textMuted,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        AutoSizeText(
+                          tFormatted,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: _textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          tYear,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: readOnly
+                  ? null
+                  : () async {
+                      final picked = await _pickWheelDate(initial: fDate);
+                      if (picked == null) return;
+                      if (!_validatePickedDate(picked)) return;
+                      setState(() {
+                        fDate = picked;
+                        tDate = picked;
+                        fromText = DateFormat('dd/MM/yyyy').format(picked);
+                        toText = DateFormat('dd/MM/yyyy').format(picked);
+                      });
+                    },
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.calendar_month_rounded,
+                        color: _accent, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.dateLabel.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: _textMuted,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$fFormatted, $fYear',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: _textDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _accent.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _getLiveDurationBadge(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: HRColors.brandPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
   Widget _buildSubmitButton() {
+    final badge = _getLiveDurationBadge();
     return Container(
       width: double.infinity,
-      height: 48,
+      height: 52,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _isSubmitting
               ? [_accent.withOpacity(0.6), _accent.withOpacity(0.6)]
-              : [_accent, _accent],
+              : [_accent, HRColors.brandPrimary],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: _accent.withOpacity(_isSubmitting ? 0.05 : 0.20),
+            color: _accent.withOpacity(_isSubmitting ? 0.05 : 0.24),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -677,15 +1107,15 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
                 ),
                 const SizedBox(width: 8),
               ] else ...[
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 19),
                 const SizedBox(width: 8),
               ],
               AutoSizeText(
-                AppLocalizations.of(context)!.submitRequest,
+                '${AppLocalizations.of(context)!.submitRequest} • $badge',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
-                  fontSize: 13,
+                  fontSize: 14,
                 ),
               ),
             ],
@@ -1469,156 +1899,48 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
+                // Show Leave Category Selector Cards first (except for Short Leave)
+                if (leaveTypeValue != 'short_leave') ...[
+                  _buildSectionLabel(AppLocalizations.of(context)!.leaveTypeLabel),
+                  _buildCategorySelector(readOnly),
+                  const SizedBox(height: 18),
+                ],
+
                 Container(
                   height: 52,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300, width: 1.0),
+                    border: Border.all(color: Colors.grey.shade200, width: 1.0),
                   ),
                   child: Row(
                     children: [
-                      _modeButton('Half Day', 'half', Icons.timelapse_rounded),
                       _modeButton(
                           'Full Day', 'full_day', Icons.wb_sunny_outlined),
+                      _modeButton('Half Day', 'half', Icons.timelapse_rounded),
                       _modeButton('Short Leave', 'short_leave',
                           Icons.access_time_rounded),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-
-                // Show Leave Type dropdown for all modes except Short Leave
-                if (leaveTypeValue != 'short_leave') ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: _accent.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(Icons.category_rounded, color: _accent, size: 16),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: DropdownButton<String>(
-                            underline: const SizedBox.shrink(),
-                            dropdownColor: HRColors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            value: typeValue,
-                            iconEnabledColor: _textDark,
-                            isExpanded: true,
-                            onChanged: (readOnly || leaveTypeValue == 'short_leave')
-                                ? null
-                                : (v) => setState(() => typeValue = v),
-                            items: leaveTypeList.map((v) {
-                              return DropdownMenuItem<String>(
-                                value: v,
-                                child: AutoSizeText(
-                                  _getLeaveTypeLabel(v),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: _textDark,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                const SizedBox(height: 18),
 
                 _buildEligibilityBanner(),
 
-                if (leaveTypeValue == 'full_day')
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildDateField(
-                          text: fromText,
-                          onTap: readOnly
-                              ? null
-                              : () async {
-                                  final picked =
-                                      await _pickWheelDate(initial: fDate);
-                                  if (picked == null) return;
-                                  if (!_validatePickedDate(picked)) return;
+                _buildSectionLabel(AppLocalizations.of(context)!.fromToLabel),
+                _buildUnifiedDateCard(readOnly),
 
-                                  setState(() {
-                                    fDate = picked;
-                                    fromText = DateFormat('dd/MM/yyyy')
-                                        .format(picked);
-                                  });
-                                },
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: _buildDateField(
-                          text: toText,
-                          onTap: readOnly
-                              ? null
-                              : () async {
-                                  final picked =
-                                      await _pickWheelDate(initial: tDate);
-                                  if (picked == null) return;
-                                  if (!_validatePickedDate(picked)) return;
-
-                                  setState(() {
-                                    tDate = picked;
-                                    toText = DateFormat('dd/MM/yyyy')
-                                        .format(picked);
-                                  });
-                                },
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  _buildDateField(
-                    text: fromText,
-                    onTap: readOnly
-                        ? null
-                        : () async {
-                            final picked =
-                                await _pickWheelDate(initial: fDate);
-                            if (picked == null) return;
-                            if (!_validatePickedDate(picked)) return;
-
-                            setState(() {
-                              fDate = picked;
-                              tDate = picked; // Sync To date for single day
-                              fromText =
-                                  DateFormat('dd/MM/yyyy').format(picked);
-                              toText =
-                                  DateFormat('dd/MM/yyyy').format(picked);
-                            });
-                          },
-                  ),
                 // Half Day Session Selection (Tab style)
                 if (leaveTypeValue == 'half') ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: Colors.grey.shade200),
                     ),
                     child: Row(
                       children: [
@@ -1646,77 +1968,31 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
 
                 // Short Leave Session Selection
                 if (leaveTypeValue == 'short_leave') ...[
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9FAFB),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: Colors.grey.shade200),
                     ),
                     child: Row(
                       children: [
                         Expanded(
-                          child: InkWell(
-                            onTap: readOnly
-                                ? null
-                                : () => setState(
-                                    () => shortLeaveSession = 'morning'),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: shortLeaveSession == 'morning'
-                                    ? HRColors.tabColor
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: AutoSizeText(
-                                  AppLocalizations.of(context)!.morning,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                    color: shortLeaveSession == 'morning'
-                                        ? HRColors.tabLabelColor
-                                        : _textDark,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          child: _tabButton(
+                            label: AppLocalizations.of(context)!.morning,
+                            isSelected: shortLeaveSession == 'morning',
+                            onTap: () =>
+                                setState(() => shortLeaveSession = 'morning'),
                           ),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: InkWell(
-                            onTap: readOnly
-                                ? null
-                                : () => setState(
-                                    () => shortLeaveSession = 'evening'),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: shortLeaveSession == 'evening'
-                                    ? HRColors.tabColor
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: AutoSizeText(
-                                  AppLocalizations.of(context)!.evening,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                    color: shortLeaveSession == 'evening'
-                                        ? HRColors.tabLabelColor
-                                        : _textDark,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          child: _tabButton(
+                            label: AppLocalizations.of(context)!.evening,
+                            isSelected: shortLeaveSession == 'evening',
+                            onTap: () =>
+                                setState(() => shortLeaveSession = 'evening'),
                           ),
                         ),
                       ],
@@ -1724,15 +2000,24 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
                   ),
                 ],
 
-                const SizedBox(height: 16),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
+                _buildSectionLabel(
+                  '${AppLocalizations.of(context)!.noteLabel} (${AppLocalizations.of(context)!.optional})',
+                ),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: Colors.grey.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: description,
@@ -1742,7 +2027,7 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
                     style: const TextStyle(
                       color: _textDark,
                       fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                      fontSize: 13.5,
                     ),
                     decoration: InputDecoration(
                       border: InputBorder.none,
@@ -1751,15 +2036,15 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
                       hintStyle: const TextStyle(
                         color: _textMuted,
                         fontWeight: FontWeight.w500,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
                   ),
                 ),
                 if (!readOnly) ...[
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   _buildSubmitButton(),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
                 ],
               ],
             ),

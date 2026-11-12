@@ -159,7 +159,11 @@ class _MobileSalarySlipState extends State<MobileSalarySlip>
           ),
           AutoSizeText(
             AppLocalizations.of(context)!.salarySlips,
-            style: const TextStyle(fontSize: 24, fontWeight: _wBlack),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: HRColors.brandDarkText,
+            ),
           ),
           GestureDetector(
             onTap: () async {

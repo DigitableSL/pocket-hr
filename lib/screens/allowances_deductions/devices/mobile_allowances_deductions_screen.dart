@@ -295,15 +295,15 @@ class _MobileAllowancesDeductionsScreenState
           children: [
             // header
             Padding(
-              padding: const EdgeInsets.fromLTRB(_g12, _g16, _g12, _g8),
+              padding: const EdgeInsets.fromLTRB(_g16, _g12, _g16, 0),
               child: Row(
                 children: [
                   InkWell(
                     onTap: () => Navigator.of(context).maybePop(),
                     borderRadius: BorderRadius.circular(40),
                     child: Container(
-                      width: 44,
-                      height: 44,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color:
                             HRColors.flavorIconBackgroundColor ?? Colors.white,
@@ -321,36 +321,22 @@ class _MobileAllowancesDeductionsScreenState
                       AppLocalizations.of(context)!.allowanceDeductions,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
+                      style: TextStyle(
+                        color: HRColors.brandDarkText,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                  // InkWell(
-                  //   onTap: _load,
-                  //   borderRadius: BorderRadius.circular(40),
-                  //   child: Container(
-                  //     width: 44,
-                  //     height: 44,
-                  //     decoration: BoxDecoration(
-                  //       color: Colors.white,
-                  //       borderRadius: BorderRadius.circular(40),
-                  //       border: Border.all(color: Colors.black.withOpacity(0.06)),
-                  //     ),
-                  //     child: const Icon(Icons.refresh, color: Colors.black87),
-                  //   ),
-                  // ),
                 ],
               ),
             ),
 
-            const SizedBox(height: _g20),
+            const SizedBox(height: _g16),
 
             // tabs
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _g12),
+              padding: const EdgeInsets.symmetric(horizontal: _g16),
               child: Container(
                 decoration: BoxDecoration(
                   color: _surface,
