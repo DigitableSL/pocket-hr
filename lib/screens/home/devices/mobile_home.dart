@@ -287,12 +287,6 @@ class _MobileHomeState extends State<MobileHome>
     final activeLat = useQrLocation ? qrLatitude : latitude;
     final activeLng = useQrLocation ? qrLongitude : longitude;
     final activeAddr = useQrLocation ? (qrAddress ?? address) : address;
-    final activeAcc = useQrLocation ? qrAccuracy : accuracy;
-
-    final latStr = (activeLat != null) ? activeLat.toString() : null;
-    final lngStr = (activeLng != null) ? activeLng.toString() : null;
-    final addr = (activeAddr != null) ? activeAddr.toString() : null;
-    final accStr = (activeAcc != null) ? activeAcc.toString() : null;
 
     final attendanceId = DateTime.now().millisecondsSinceEpoch.toString();
     final model = AttendancePunchModel(
@@ -306,7 +300,7 @@ class _MobileHomeState extends State<MobileHome>
       lng: (activeLng is double)
           ? activeLng
           : double.tryParse(activeLng?.toString() ?? '') ?? 0.0,
-      address: activeAddr ?? '',
+      address: activeAddr?.toString() ?? '',
       deviceId: '',
       deviceModel: '',
       deviceBrand: '',
@@ -320,10 +314,10 @@ class _MobileHomeState extends State<MobileHome>
       isSynced: 0,
     );
 
-    // 🔹 STEP 1: ALL records are FIRST saved to local Drift SQLite DB
+    // 🔹 STEP 1: Every punch (online or offline) goes directly into the Drift SQLite queue first
     try {
       await OfflineAttendanceService.instance.insertPunch(model);
-      debugPrint('[PUNCH STEP 1] 💾 Saved punch locally into Drift SQLite DB FIRST (ID: $attendanceId, isSynced: 0)');
+      debugPrint('[PUNCH STEP 1] 💾 Queued punch in Drift SQLite DB (ID: $attendanceId, isSynced: 0)');
     } catch (e) {
       debugPrint('[DB ERROR] Failed inserting punch to Drift DB: $e');
     }
@@ -343,7 +337,7 @@ class _MobileHomeState extends State<MobileHome>
     // Check network connectivity
     final conn = Provider.of<ConnectionProvider>(context, listen: false);
     if (!conn.isOnline) {
-      debugPrint('[PUNCH STEP 2] 📡 Device is Offline. Punch stays queued in Drift DB (isSynced: 0).');
+      debugPrint('[PUNCH STEP 2] 📡 Device is Offline. Punch stays queued in Drift SQLite (isSynced: 0).');
       if (mounted) {
         showTopToast(
           AppLocalizations.of(context)!.savedLocallyWillSyncWhenOnline,
@@ -353,89 +347,40 @@ class _MobileHomeState extends State<MobileHome>
       return;
     }
 
-    // STEP 2: Sync in the background with an 8s timeout so slow/poor connections never block the UI
+    // 🔹 STEP 2: Trigger the SQLite queue processor in the background (no direct API bypass)
     unawaited(() async {
-      debugPrint('[PUNCH STEP 2] 🌐 Device is Online. Sending punch to backend API in background...');
-      Map? res;
-      try {
-        res = await apiService
-            .checkInCheckout(
-              date,
-              type,
-              latitude: latStr,
-              longitude: lngStr,
-              address: addr,
-              accuracy: accStr,
-              isRemotePunch: isRemote,
-            )
-            .timeout(const Duration(seconds: 8));
-      } catch (e) {
-        // Network error or slow connection timeout: punch remains saved in Drift DB (isSynced = 0) to auto-sync later
-        debugPrint('[PUNCH STEP 2 ERROR] Network/timeout failure: $e. Punch remains in Drift DB for auto-sync.');
-        await OfflineAttendanceService.instance.refreshPendingCount();
-        if (mounted) {
-          showTopToast(
-            AppLocalizations.of(context)!.savedLocallyWillSyncWhenOnline,
-            background: Colors.orange,
-          );
-        }
-        return;
-      }
+      debugPrint('[PUNCH STEP 2] 🌐 Device is Online. Triggering SQLite background queue sync...');
+      final result = await OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true);
+      if (!mounted) return;
 
-      if (res is Map && res.containsKey('status')) {
-        final statusCode = res['status'];
-        String msg = '';
-        Color bg = Colors.red;
-        if (statusCode is int && statusCode >= 200 && statusCode < 300) {
-          // STEP 3: Backend success! Update local Drift DB record as synced
-          await OfflineAttendanceService.instance.markSynced(attendanceId);
-          debugPrint('[PUNCH STEP 3] ✅ Server returned HTTP $statusCode. Updated local Drift DB record (isSynced: 1)');
+      final lastStatus = result['lastStatus'] ?? 0;
+      final successCount = result['success'] ?? 0;
 
-          if (mounted) {
-            msg = type == 'checkin'
-                ? AppLocalizations.of(context)!.checkInSuccess
-                : AppLocalizations.of(context)!.checkOutSuccess;
-            bg = Colors.green;
-            showTopToast(msg, background: bg);
-          }
-
-          // Background sweep for any prior pending punches
-          unawaited(OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true));
-        } else if (statusCode == 400 || statusCode == 401 || statusCode == 403) {
-          // Permanent failure (validation/credentials): Mark synced/cleared in DB to prevent infinite retry
-          await OfflineAttendanceService.instance.markSynced(attendanceId);
-          debugPrint('[PUNCH STEP 3] ⚠️ Server returned HTTP $statusCode (client error). Cleared from DB queue.');
-
-          if (mounted) {
-            if (statusCode == 400) {
-              msg = AppLocalizations.of(context)!.cantLocate;
-            } else {
-              msg = AppLocalizations.of(context)!.sessionExpired;
-            }
-            bg = Colors.red;
-            showTopToast(msg, background: bg);
-          }
-        } else {
-          // Server side error (5xx): Punch remains in local DB for auto-sync
-          await OfflineAttendanceService.instance.incrementRetry(attendanceId);
-          debugPrint('[PUNCH STEP 3] ❌ Server returned HTTP $statusCode (server error). Punch stays in Drift DB for auto-sync.');
-          if (mounted) {
-            showTopToast(
-              AppLocalizations.of(context)!.serverErrorSavedLocallyWillSyncLater,
-              background: Colors.orange,
-            );
-          }
-        }
+      if ((lastStatus >= 200 && lastStatus < 300) || successCount > 0) {
+        final msg = type == 'checkin'
+            ? AppLocalizations.of(context)!.checkInSuccess
+            : AppLocalizations.of(context)!.checkOutSuccess;
+        showTopToast(msg, background: Colors.green);
+      } else if (lastStatus == 400) {
+        showTopToast(
+          AppLocalizations.of(context)!.cantLocate,
+          background: Colors.red,
+        );
+      } else if (lastStatus == 401 || lastStatus == 403) {
+        showTopToast(
+          AppLocalizations.of(context)!.sessionExpired,
+          background: Colors.red,
+        );
+      } else if (lastStatus >= 500) {
+        showTopToast(
+          AppLocalizations.of(context)!.serverErrorSavedLocallyWillSyncLater,
+          background: Colors.orange,
+        );
       } else {
-        // res is null: Punch remains in local DB for auto-sync
-        await OfflineAttendanceService.instance.incrementRetry(attendanceId);
-        debugPrint('[PUNCH STEP 3] ❌ Server returned null response. Punch stays in Drift DB for auto-sync.');
-        if (mounted) {
-          showTopToast(
-            AppLocalizations.of(context)!.serverErrorSavedLocallyWillSyncLater,
-            background: Colors.orange,
-          );
-        }
+        showTopToast(
+          AppLocalizations.of(context)!.savedLocallyWillSyncWhenOnline,
+          background: Colors.orange,
+        );
       }
     }());
   }

@@ -898,6 +898,7 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
       );
 
       final response = await _apiService.approveLeave(leaveId);
+      if (!mounted) return;
 
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
@@ -911,12 +912,16 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
         await _loadMemberLeaves();
       } else {
         showTopToast(
-          response['message']?.toString() ??
-              AppLocalizations.of(context)!.leaveApproveFailed,
+          DesignConfig.getFriendlyErrorMessage(
+            context,
+            response['message']?.toString() ??
+                AppLocalizations.of(context)!.leaveApproveFailed,
+          ),
           background: Colors.red,
         );
       }
     } catch (e, st) {
+      if (!mounted) return;
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -925,7 +930,7 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
       debugPrint('$st');
 
       showTopToast(
-        AppLocalizations.of(context)!.errorPrefix(e.toString()),
+        DesignConfig.getFriendlyErrorMessage(context, e),
         background: Colors.red,
       );
     }
@@ -945,6 +950,7 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
       );
 
       final response = await _apiService.rejectLeave(leaveId, reason);
+      if (!mounted) return;
 
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
@@ -958,12 +964,16 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
         await _loadMemberLeaves();
       } else {
         showTopToast(
-          response['message']?.toString() ??
-              AppLocalizations.of(context)!.leaveRejectFailed,
+          DesignConfig.getFriendlyErrorMessage(
+            context,
+            response['message']?.toString() ??
+                AppLocalizations.of(context)!.leaveRejectFailed,
+          ),
           background: Colors.red,
         );
       }
     } catch (e, st) {
+      if (!mounted) return;
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -972,7 +982,7 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
       debugPrint('$st');
 
       showTopToast(
-        AppLocalizations.of(context)!.errorPrefix(e.toString()),
+        DesignConfig.getFriendlyErrorMessage(context, e),
         background: Colors.red,
       );
     }

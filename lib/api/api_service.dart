@@ -290,6 +290,7 @@ class APIService {
   Future<dynamic> leave(dynamic details) async {
     try {
       await storage.ready;
+      await _ensureValidToken();
       // access_token is the Bearer token, token is the oauth token used as Oauth-Token
       final accessToken = SecureTokenService.getAccessTokenSync();
       final oauthToken = SecureTokenService.getOauthTokenSync();
@@ -383,14 +384,30 @@ class APIService {
       debugPrint(jsonEncode(data));
       debugPrint('==============================================================');
 
-      final response = await http.post(Uri.parse(url),
-          headers: headers, body: data, encoding: Encoding.getByName("utf-8"));
+      final response = await http
+          .post(Uri.parse(url),
+              headers: headers,
+              body: data,
+              encoding: Encoding.getByName("utf-8"))
+          .timeout(const Duration(seconds: 15));
 
       debugPrint('=================== LEAVE RESPONSE FULL BODY ===================');
       debugPrint(response.body);
       debugPrint('================================================================');
       debugPrint('[LEAVE] response => ${response.body}');
-      final values = json.decode(response.body);
+
+      dynamic values;
+      try {
+        values = json.decode(response.body);
+      } catch (_) {
+        return {
+          'status': false,
+          'statusCode': response.statusCode,
+          'message': response.statusCode >= 500
+              ? 'Server error (${response.statusCode})'
+              : 'Failed to submit leave.',
+        };
+      }
 
       // Inject status code so UI checks it safely
       if (values is Map) {
@@ -398,12 +415,19 @@ class APIService {
         out['statusCode'] = response.statusCode;
         return out;
       }
-      return values;
+      return {
+        'statusCode': response.statusCode,
+        'data': values,
+      };
     } catch (e, st) {
       debugPrint('[LEAVE] ERROR => $e');
       debugPrint(st.toString());
-      showToast('Failed to submit leave.');
-      return {'status': false, 'message': 'Failed to submit leave.'};
+      return {
+        'status': false,
+        'statusCode': 0,
+        'networkError': true,
+        'error': e.toString(),
+      };
     }
   }
 
@@ -488,6 +512,7 @@ class APIService {
   Future<List<TodoItem>> getTodos({required bool approvableByMe}) async {
     try {
       await storage.ready;
+      await _ensureValidToken();
       final url = '$baseUrl/todos';
       final uri = await _uriWithTenant(url, {
         'approvableByMe': approvableByMe.toString(),
@@ -517,12 +542,21 @@ class APIService {
       debugPrint('[TODOS] GET $uri');
       debugPrint('[TODOS] headers => $headers');
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 15));
       debugPrint('[TODOS] status=${response.statusCode}');
       debugPrint('[TODOS] response.body=${response.body}');
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Failed to load todos (Status: ${response.statusCode})');
+        String errMsg = 'Failed to load todos (Status: ${response.statusCode})';
+        try {
+          final decodedErr = json.decode(response.body);
+          if (decodedErr is Map && decodedErr['message'] != null) {
+            errMsg = decodedErr['message'].toString();
+          }
+        } catch (_) {}
+        throw Exception(errMsg);
       }
 
       final decoded = json.decode(response.body);
@@ -2299,19 +2333,22 @@ class APIService {
 
   Future<Map<String, dynamic>> approveLeave(String leaveId) async {
     await storage.ready;
+    await _ensureValidToken();
     final accessToken = SecureTokenService.getAccessTokenSync();
-    final tenant = storage.getItem('tenant')?.toString() ?? '';
+    final tenant = await _resolveTenant() ?? storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/leave/$leaveId/approve?tenant=$tenant';
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
+    final response = await http
+        .post(
+          Uri.parse(url),
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+        )
+        .timeout(const Duration(seconds: 15));
 
     return _handleApiResponse(response, 'approveLeave');
   }
@@ -2319,43 +2356,49 @@ class APIService {
   Future<Map<String, dynamic>> rejectLeave(
       String leaveId, String reason) async {
     await storage.ready;
+    await _ensureValidToken();
     final accessToken = SecureTokenService.getAccessTokenSync();
-    final tenant = storage.getItem('tenant')?.toString() ?? '';
+    final tenant = await _resolveTenant() ?? storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/leave/$leaveId/reject?tenant=$tenant';
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'reason': reason}),
-    );
+    final response = await http
+        .post(
+          Uri.parse(url),
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'reason': reason}),
+        )
+        .timeout(const Duration(seconds: 15));
 
     return _handleApiResponse(response, 'rejectLeave');
   }
 
   Future<Map<String, dynamic>> approveTodo(String todoId) async {
     await storage.ready;
+    await _ensureValidToken();
     final accessToken = SecureTokenService.getAccessTokenSync();
-    final tenant = storage.getItem('tenant')?.toString() ?? '';
+    final tenant = await _resolveTenant() ?? storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/todos/$todoId/update?tenant=$tenant';
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'id': todoId,
-        'action': 'complete',
-      }),
-    );
+    final response = await http
+        .post(
+          Uri.parse(url),
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'id': todoId,
+            'action': 'complete',
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
 
     debugPrint('[approveTodo] Response Body: ${response.body}');
     return _handleApiResponse(response, 'approveTodo');
@@ -2364,24 +2407,27 @@ class APIService {
 
   Future<Map<String, dynamic>> rejectTodo(String todoId, String reason) async {
     await storage.ready;
+    await _ensureValidToken();
     final accessToken = SecureTokenService.getAccessTokenSync();
-    final tenant = storage.getItem('tenant')?.toString() ?? '';
+    final tenant = await _resolveTenant() ?? storage.getItem('tenant')?.toString() ?? '';
 
     final url = '${baseUrl}/todos/$todoId/update?tenant=$tenant';
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'id': todoId,
-        'action': 'reject',
-        'reason': reason,
-      }),
-    );
+    final response = await http
+        .post(
+          Uri.parse(url),
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'id': todoId,
+            'action': 'reject',
+            'reason': reason,
+          }),
+        )
+        .timeout(const Duration(seconds: 15));
 
     return _handleApiResponse(response, 'rejectTodo');
   }
@@ -2449,12 +2495,23 @@ class APIService {
       String errorMsg = 'HTTP ${response.statusCode} Error in $apiName';
       try {
         final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['message'] != null) {
-          errorMsg = decoded['message'].toString();
+        if (decoded is Map) {
+          final rawMsg = decoded['message'] ??
+              decoded['error'] ??
+              (decoded['data'] is Map ? decoded['data']['message'] : null) ??
+              decoded['errors'];
+          if (rawMsg != null && rawMsg.toString().trim().isNotEmpty) {
+            errorMsg = rawMsg.toString().trim();
+          }
         }
       } catch (_) {
-        // If not JSON, show raw body (this prevents the <!DOCTYPE html> crash)
-        errorMsg = response.body;
+        final trimmed = response.body.trim();
+        if (trimmed.isNotEmpty &&
+            !trimmed.toLowerCase().startsWith('<!doctype') &&
+            !trimmed.toLowerCase().startsWith('<html') &&
+            trimmed.length <= 200) {
+          errorMsg = trimmed;
+        }
       }
       throw Exception(errorMsg);
     }

@@ -54,12 +54,14 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final results = await APIService().getTodos(approvableByMe: true);
+      if (!mounted) return;
       setState(() {
         _remoteAttendanceTodos = results.where((e) => e.type == 'remote_attendance').toList();
         _otherTodos = results.where((e) => e.type != 'remote_attendance').toList();
@@ -68,6 +70,7 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
     } catch (e, st) {
       debugPrint('[TODOS][ERROR] $e');
       debugPrint('$st');
+      if (!mounted) return;
       setState(() {
         _error = DesignConfig.getFriendlyErrorMessage(context, e);
         _loading = false;
@@ -86,7 +89,8 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
       );
 
       final response = await APIService().approveTodo(todoId);
-      
+      if (!mounted) return;
+
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -109,10 +113,11 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
         );
       }
     } catch (e) {
+      if (!mounted) return;
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      
+
       DesignConfig.showTopToast(
         context,
         DesignConfig.getFriendlyErrorMessage(context, e),
@@ -132,7 +137,8 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
       );
 
       final response = await APIService().rejectTodo(todoId, reason);
-      
+      if (!mounted) return;
+
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -155,10 +161,11 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
         );
       }
     } catch (e) {
+      if (!mounted) return;
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
-      
+
       DesignConfig.showTopToast(
         context,
         DesignConfig.getFriendlyErrorMessage(context, e),

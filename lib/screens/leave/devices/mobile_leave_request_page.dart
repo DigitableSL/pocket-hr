@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
 
 import 'package:cn_pocket_hr/api/api_service.dart';
+import 'package:cn_pocket_hr/helpers/design_config.dart';
 import 'package:cn_pocket_hr/models/hr/leave_model.dart';
 import 'package:cn_pocket_hr/models/hr/leave_eligibility_model.dart';
 import 'package:cn_pocket_hr/helpers/hr_colors.dart';
@@ -882,6 +883,16 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
         if (isShortLeave) 'short_leave_period': shortLeaveSession,
       });
 
+      if (!mounted) return;
+
+      if (res is Map && res['networkError'] == true) {
+        await _showTopMessage(
+          DesignConfig.getFriendlyErrorMessage(context, res['error']),
+          error: true,
+        );
+        return;
+      }
+
       final statusCode = (res is Map && res.containsKey('statusCode'))
           ? res['statusCode']
           : 500;
@@ -929,11 +940,14 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
         return;
       }
 
-      await _showTopMessage(AppLocalizations.of(context)!.failedToSubmitLeave,
-          error: true);
-    } catch (_) {
-      await _showTopMessage(AppLocalizations.of(context)!.failedToSubmitLeave,
-          error: true);
+      final fallbackMsg = _getLocalizedErrorMessage(res);
+      await _showTopMessage(fallbackMsg, error: true);
+    } catch (e) {
+      if (!mounted) return;
+      await _showTopMessage(
+        DesignConfig.getFriendlyErrorMessage(context, e),
+        error: true,
+      );
     } finally {
       if (mounted) {
         setState(() {

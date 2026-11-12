@@ -22,6 +22,8 @@ class OfflineAttendanceService {
   final ValueNotifier<bool> isSyncingNotifier = ValueNotifier<bool>(false);
   Timer? _periodicSyncTimer;
   bool _isSyncing = false;
+  bool _needsResync = false;
+  Completer<Map<String, int>>? _activeSyncCompleter;
 
   AppDatabase get database => _db;
 
@@ -136,70 +138,101 @@ class OfflineAttendanceService {
     return 0;
   }
 
-  /// Attempt to sync all pending punches. Returns a Map with 'success' and 'failed' counts.
+  /// Attempt to sync all pending punches from SQLite in strict FIFO order.
+  /// Returns a Map with 'success', 'failed', and 'lastStatus'.
   Future<Map<String, int>> syncPending({int maxAttempts = 10, bool ignoreMaxAttempts = false}) async {
     if (_isSyncing) {
-      return {'success': 0, 'failed': 0};
+      _needsResync = true;
+      if (_activeSyncCompleter != null) {
+        return _activeSyncCompleter!.future;
+      }
+      return {'success': 0, 'failed': 0, 'lastStatus': 0};
     }
     _isSyncing = true;
     isSyncingNotifier.value = true;
+    final completer = Completer<Map<String, int>>();
+    _activeSyncCompleter = completer;
+
     int success = 0;
     int failed = 0;
+    int lastStatus = 0;
+
     try {
-      final pending = await getPendingPunches();
-      for (final p in pending) {
-        if (!ignoreMaxAttempts && p.retryCount >= maxAttempts) {
-          failed++;
-          continue;
-        }
-        try {
-          final res = await _api.checkInCheckout(
-            p.time,
-            p.type,
-            latitude: p.lat.toString(),
-            longitude: p.lng.toString(),
-            address: p.address,
-            isRemotePunch: p.isRemote == 1,
-          );
+      do {
+        _needsResync = false;
+        final pending = await getPendingPunches();
+        for (final p in pending) {
+          try {
+            debugPrint('[SQLITE QUEUE SYNC] 📤 Syncing queued punch ${p.attendanceId} (${p.type} at ${p.time})...');
+            final res = await _api
+                .checkInCheckout(
+                  p.time,
+                  p.type,
+                  latitude: p.lat.toString(),
+                  longitude: p.lng.toString(),
+                  address: p.address,
+                  isRemotePunch: p.isRemote == 1,
+                )
+                .timeout(const Duration(seconds: 8));
 
-          bool apiSuccess = false;
-          bool isPermanentFailure = false;
+            bool apiSuccess = false;
+            bool isPermanentFailure = false;
 
-          if (res is Map) {
-            final statusCode = res['status'];
-            if (statusCode is num) {
-              final code = statusCode.toInt();
-              if (code >= 200 && code < 300) {
+            if (res is Map) {
+              final statusCode = res['status'];
+              if (statusCode is num) {
+                final code = statusCode.toInt();
+                lastStatus = code;
+                if (code >= 200 && code < 300) {
+                  apiSuccess = true;
+                } else if (code == 400 || code == 401 || code == 403 || code == 422) {
+                  isPermanentFailure = true;
+                }
+              } else if (res['success'] == true) {
+                lastStatus = 200;
                 apiSuccess = true;
-              } else if (code == 400 || code == 403 || code == 422) {
-                isPermanentFailure = true;
               }
-            } else if (res['success'] == true) {
-              apiSuccess = true;
             }
-          }
 
-          if (apiSuccess) {
-            await markSynced(p.attendanceId);
-            success++;
-          } else if (isPermanentFailure) {
-            await markSynced(p.attendanceId);
-            failed++;
-          } else {
+            if (apiSuccess) {
+              await markSynced(p.attendanceId);
+              success++;
+              debugPrint('[SQLITE QUEUE SYNC] ✅ Synced punch ${p.attendanceId} (HTTP $lastStatus)');
+            } else if (isPermanentFailure) {
+              await markSynced(p.attendanceId);
+              failed++;
+              debugPrint('[SQLITE QUEUE SYNC] ⚠️ Permanent rejection for punch ${p.attendanceId} (HTTP $lastStatus)');
+            } else {
+              // Strict Head-of-Line FIFO: stop processing later punches if the earliest punch fails on 5xx
+              await incrementRetry(p.attendanceId);
+              failed++;
+              _needsResync = false;
+              debugPrint('[SQLITE QUEUE SYNC] ❌ Server error for head punch ${p.attendanceId} (HTTP $lastStatus). Stopping queue to preserve FIFO order.');
+              break;
+            }
+          } catch (e) {
+            // Strict Head-of-Line FIFO: stop processing later punches on timeout/network failure
+            lastStatus = 0;
             await incrementRetry(p.attendanceId);
             failed++;
+            _needsResync = false;
+            debugPrint('[SQLITE QUEUE SYNC] ⏳ Network/timeout syncing head punch ${p.attendanceId}: $e. Stopping queue to preserve FIFO order.');
+            break;
           }
-        } catch (_) {
-          await incrementRetry(p.attendanceId);
-          failed++;
         }
-      }
+      } while (_needsResync);
     } finally {
       _isSyncing = false;
       isSyncingNotifier.value = false;
       await refreshPendingCount();
     }
-    return {'success': success, 'failed': failed};
+
+    final result = {'success': success, 'failed': failed, 'lastStatus': lastStatus};
+    if (!completer.isCompleted) {
+      completer.complete(result);
+    }
+    _activeSyncCompleter = null;
+    return result;
   }
 
   Future<void> clearAllPunches() async {

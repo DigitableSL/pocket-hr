@@ -30,19 +30,33 @@ class DesignConfig {
     final lower = raw.toLowerCase();
 
     if (lower.contains('socketexception') ||
+        lower.contains('timeoutexception') ||
+        lower.contains('timed out') ||
         lower.contains('failed host lookup') ||
         lower.contains('clientexception') ||
         lower.contains('handshakeexception') ||
         lower.contains('connectexception') ||
-        lower.contains('connection timed out')) {
+        lower.contains('network is unreachable') ||
+        lower.contains('connection reset') ||
+        lower.contains('software caused connection abort')) {
       return l.failedToConnectToServer;
+    }
+
+    if (lower.contains('401') ||
+        lower.contains('403') ||
+        lower.contains('unauthenticated') ||
+        lower.contains('unauthorized')) {
+      return l.sessionExpired;
     }
 
     if (lower.contains('500') ||
         lower.contains('internal server error') ||
         lower.contains('502') ||
         lower.contains('503') ||
-        lower.contains('504')) {
+        lower.contains('504') ||
+        lower.contains('<!doctype') ||
+        lower.contains('<html') ||
+        lower.contains('formatexception')) {
       return l.serverError;
     }
 
