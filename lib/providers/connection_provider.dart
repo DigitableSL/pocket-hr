@@ -76,10 +76,12 @@ class ConnectionProvider extends ChangeNotifier {
 
     _showTransientBanner();
 
-    if (!oldOnline && _isOnline) {
-      try {
-        OfflineAttendanceService.instance.syncPending();
-      } catch (_) {}
+    if (_isOnline) {
+      unawaited(() async {
+        try {
+          await OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true);
+        } catch (_) {}
+      }());
     }
 
     notifyListeners();

@@ -25,6 +25,19 @@ class SecurityService {
   static Timer? _monitoringTimer;
   static Position? _lastKnownPosition;
 
+  /// Plays a native confirmation beep (`success: true`) or error buzz (`success: false`).
+  static Future<void> playScanTone({required bool success}) async {
+    try {
+      await _channel.invokeMethod('playScanTone', {'success': success});
+    } catch (_) {
+      try {
+        await SystemSound.play(
+          success ? SystemSoundType.click : SystemSoundType.alert,
+        );
+      } catch (_) {}
+    }
+  }
+
   /// Starts continuous foreground security monitoring (checks Auto Date/Time,
   /// Developer Mode, and Mock GPS every [interval] while app is active).
   /// Automatically pauses when [pauseContinuousMonitoring] is called on app backgrounding

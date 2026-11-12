@@ -4,8 +4,12 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.location.Location
 import android.location.LocationManager
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -57,11 +61,30 @@ class MainActivity: FlutterActivity() {
                 "isAutoTimeEnabled" -> {
                     result.success(isAutoTimeEnabled())
                 }
+                "playScanTone" -> {
+                    val success = call.argument<Boolean>("success") ?: true
+                    playScanTone(success)
+                    result.success(true)
+                }
                 else -> {
                     result.notImplemented()
                 }
             }
         }
+    }
+
+    private fun playScanTone(success: Boolean) {
+        try {
+            val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 90)
+            val toneType = if (success) ToneGenerator.TONE_PROP_ACK else ToneGenerator.TONE_PROP_NACK
+            val durationMs = if (success) 180 else 320
+            toneGen.startTone(toneType, durationMs)
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    toneGen.release()
+                } catch (_: Exception) {}
+            }, (durationMs + 100).toLong())
+        } catch (_: Exception) {}
     }
 
     /**

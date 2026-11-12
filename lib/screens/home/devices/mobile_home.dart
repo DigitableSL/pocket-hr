@@ -67,6 +67,8 @@ class _MobileHomeState extends State<MobileHome>
   APIService apiService = APIService();
   HRController controller = HRController();
   bool _qrBusy = false;
+  bool _pressingScan = false;
+  bool _pressingRemote = false;
 
   // Brief cooldown after punch (prevents double-punch)
   bool _punchCooldown = false;
@@ -178,6 +180,7 @@ class _MobileHomeState extends State<MobileHome>
     // Runs after the first frame so the UI appears immediately, then updates.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) getTime();
+      unawaited(OfflineAttendanceService.instance.refreshPendingCount());
       try {
         await storage.ready;
         if (storage.getItem('me_profile') == null) {
@@ -199,6 +202,8 @@ class _MobileHomeState extends State<MobileHome>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _startClockTimer();
+      unawaited(OfflineAttendanceService.instance.refreshPendingCount());
+      unawaited(OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true));
       if (streamSubscription != null && streamSubscription!.isPaused) {
         streamSubscription!.resume();
       }
@@ -318,15 +323,27 @@ class _MobileHomeState extends State<MobileHome>
     // 🔹 STEP 1: ALL records are FIRST saved to local Drift SQLite DB
     try {
       await OfflineAttendanceService.instance.insertPunch(model);
-      print('[PUNCH STEP 1] 💾 Saved punch locally into Drift SQLite DB FIRST (ID: $attendanceId, isSynced: 0)');
+      debugPrint('[PUNCH STEP 1] 💾 Saved punch locally into Drift SQLite DB FIRST (ID: $attendanceId, isSynced: 0)');
     } catch (e) {
-      print('[DB ERROR] Failed inserting punch to Drift DB: $e');
+      debugPrint('[DB ERROR] Failed inserting punch to Drift DB: $e');
     }
+
+    // Immediate tactile + audible confirmation and 5s double-punch cooldown
+    try {
+      HapticFeedback.mediumImpact();
+    } catch (_) {}
+    unawaited(SecurityService.playScanTone(success: true));
+
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _punchCooldown = false);
+    });
+    if (mounted) setState(() => _punchCooldown = true);
 
     // Check network connectivity
     final conn = Provider.of<ConnectionProvider>(context, listen: false);
     if (!conn.isOnline) {
-      print('[PUNCH STEP 2] 📡 Device is Offline. Punch stays queued in Drift DB (isSynced: 0).');
+      debugPrint('[PUNCH STEP 2] 📡 Device is Offline. Punch stays queued in Drift DB (isSynced: 0).');
       if (mounted) {
         showTopToast(
           AppLocalizations.of(context)!.savedLocallyWillSyncWhenOnline,
@@ -336,69 +353,83 @@ class _MobileHomeState extends State<MobileHome>
       return;
     }
 
-    // STEP 2: If online and server is reachable, attempt sending punch to backend
-    print('[PUNCH STEP 2] 🌐 Device is Online. Sending punch to backend API...');
-    Map? res;
-    try {
-      res = await apiService.checkInCheckout(
-        date,
-        type,
-        latitude: latStr,
-        longitude: lngStr,
-        address: addr,
-        accuracy: accStr,
-        isRemotePunch: isRemote,
-      );
-    } catch (e) {
-      // Network error: punch remains saved in Drift DB (isSynced = 0) to auto-sync later
-      print('[PUNCH STEP 2 ERROR] Network failure: $e. Punch remains in Drift DB for auto-sync.');
-      if (mounted) {
-        showTopToast(
-          AppLocalizations.of(context)!.savedLocallyWillSyncWhenOnline,
-          background: Colors.orange,
-        );
-      }
-      return;
-    }
-
-    if (res is Map && res.containsKey('status')) {
-      final statusCode = res['status'];
-      String msg = '';
-      Color bg = Colors.red;
-      if (statusCode is int && statusCode >= 200 && statusCode < 300) {
-        // STEP 3: Backend success! Update local Drift DB record as synced
-        await OfflineAttendanceService.instance.markSynced(attendanceId);
-        print('[PUNCH STEP 3] ✅ Server returned HTTP $statusCode. Updated local Drift DB record (isSynced: 1)');
-
-        msg = type == 'checkin'
-            ? AppLocalizations.of(context)!.checkInSuccess
-            : AppLocalizations.of(context)!.checkOutSuccess;
-        bg = Colors.green;
-        _cooldownTimer?.cancel();
-        _cooldownTimer = Timer(const Duration(seconds: 5), () {
-          if (mounted) setState(() => _punchCooldown = false);
-        });
-        if (mounted) setState(() => _punchCooldown = true);
-        if (mounted) showTopToast(msg, background: bg);
-
-        // Background sweep for any prior pending punches
-        OfflineAttendanceService.instance.syncPending();
-      } else if (statusCode == 400 || statusCode == 401 || statusCode == 403) {
-        // Permanent failure (validation/credentials): Mark synced/cleared in DB to prevent infinite retry
-        await OfflineAttendanceService.instance.markSynced(attendanceId);
-        print('[PUNCH STEP 3] ⚠️ Server returned HTTP $statusCode (client error). Cleared from DB queue.');
-
-        if (statusCode == 400) {
-          msg = AppLocalizations.of(context)!.cantLocate;
-        } else {
-          msg = AppLocalizations.of(context)!.sessionExpired;
+    // STEP 2: Sync in the background with an 8s timeout so slow/poor connections never block the UI
+    unawaited(() async {
+      debugPrint('[PUNCH STEP 2] 🌐 Device is Online. Sending punch to backend API in background...');
+      Map? res;
+      try {
+        res = await apiService
+            .checkInCheckout(
+              date,
+              type,
+              latitude: latStr,
+              longitude: lngStr,
+              address: addr,
+              accuracy: accStr,
+              isRemotePunch: isRemote,
+            )
+            .timeout(const Duration(seconds: 8));
+      } catch (e) {
+        // Network error or slow connection timeout: punch remains saved in Drift DB (isSynced = 0) to auto-sync later
+        debugPrint('[PUNCH STEP 2 ERROR] Network/timeout failure: $e. Punch remains in Drift DB for auto-sync.');
+        await OfflineAttendanceService.instance.refreshPendingCount();
+        if (mounted) {
+          showTopToast(
+            AppLocalizations.of(context)!.savedLocallyWillSyncWhenOnline,
+            background: Colors.orange,
+          );
         }
-        bg = Colors.red;
-        if (mounted) showTopToast(msg, background: bg);
+        return;
+      }
+
+      if (res is Map && res.containsKey('status')) {
+        final statusCode = res['status'];
+        String msg = '';
+        Color bg = Colors.red;
+        if (statusCode is int && statusCode >= 200 && statusCode < 300) {
+          // STEP 3: Backend success! Update local Drift DB record as synced
+          await OfflineAttendanceService.instance.markSynced(attendanceId);
+          debugPrint('[PUNCH STEP 3] ✅ Server returned HTTP $statusCode. Updated local Drift DB record (isSynced: 1)');
+
+          if (mounted) {
+            msg = type == 'checkin'
+                ? AppLocalizations.of(context)!.checkInSuccess
+                : AppLocalizations.of(context)!.checkOutSuccess;
+            bg = Colors.green;
+            showTopToast(msg, background: bg);
+          }
+
+          // Background sweep for any prior pending punches
+          unawaited(OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true));
+        } else if (statusCode == 400 || statusCode == 401 || statusCode == 403) {
+          // Permanent failure (validation/credentials): Mark synced/cleared in DB to prevent infinite retry
+          await OfflineAttendanceService.instance.markSynced(attendanceId);
+          debugPrint('[PUNCH STEP 3] ⚠️ Server returned HTTP $statusCode (client error). Cleared from DB queue.');
+
+          if (mounted) {
+            if (statusCode == 400) {
+              msg = AppLocalizations.of(context)!.cantLocate;
+            } else {
+              msg = AppLocalizations.of(context)!.sessionExpired;
+            }
+            bg = Colors.red;
+            showTopToast(msg, background: bg);
+          }
+        } else {
+          // Server side error (5xx): Punch remains in local DB for auto-sync
+          await OfflineAttendanceService.instance.incrementRetry(attendanceId);
+          debugPrint('[PUNCH STEP 3] ❌ Server returned HTTP $statusCode (server error). Punch stays in Drift DB for auto-sync.');
+          if (mounted) {
+            showTopToast(
+              AppLocalizations.of(context)!.serverErrorSavedLocallyWillSyncLater,
+              background: Colors.orange,
+            );
+          }
+        }
       } else {
-        // Server side error (5xx): Punch remains in local DB for auto-sync
+        // res is null: Punch remains in local DB for auto-sync
         await OfflineAttendanceService.instance.incrementRetry(attendanceId);
-        print('[PUNCH STEP 3] ❌ Server returned HTTP $statusCode (server error). Punch stays in Drift DB for auto-sync.');
+        debugPrint('[PUNCH STEP 3] ❌ Server returned null response. Punch stays in Drift DB for auto-sync.');
         if (mounted) {
           showTopToast(
             AppLocalizations.of(context)!.serverErrorSavedLocallyWillSyncLater,
@@ -406,17 +437,7 @@ class _MobileHomeState extends State<MobileHome>
           );
         }
       }
-    } else {
-      // res is null: Punch remains in local DB for auto-sync
-      await OfflineAttendanceService.instance.incrementRetry(attendanceId);
-      print('[PUNCH STEP 3] ❌ Server returned null response. Punch stays in Drift DB for auto-sync.');
-      if (mounted) {
-        showTopToast(
-          AppLocalizations.of(context)!.serverErrorSavedLocallyWillSyncLater,
-          background: Colors.orange,
-        );
-      }
-    }
+    }());
   }
 
   changeBTN() {
@@ -566,37 +587,28 @@ class _MobileHomeState extends State<MobileHome>
   Future<List<UserLocation>?> _fetchLocationsWithRetry(String userId) async {
     final conn = Provider.of<ConnectionProvider>(context, listen: false);
     if (!conn.isOnline) {
-      if (mounted) {
-        showTopToast(
-          'Network connection error. Please check your internet connection.',
-          background: Colors.red,
-        );
-      }
-      return [];
+      // Return null so tenantCoordinatesFailed = true and local offline QR scan is enabled
+      return null;
     }
 
     int attempts = 0;
-    while (attempts < 3) {
+    while (attempts < 2) {
       try {
-        final List<UserLocation> locations = await apiService.getTenantCoordinateFromQr(userId);
+        final List<UserLocation> locations = await apiService
+            .getTenantCoordinateFromQr(userId)
+            .timeout(const Duration(seconds: 4));
         return locations;
       } on SocketException catch (e) {
-        print('[API ERROR] Network SocketException: $e');
-        if (mounted) {
-          showTopToast(
-            'Network connection error. Please check your internet connection.',
-            background: Colors.red,
-          );
-        }
-        return [];
+        debugPrint('[API ERROR] Network SocketException: $e');
+        return null;
       } on TimeoutException catch (e) {
-        print('[API ERROR] Server timeout: $e');
+        debugPrint('[API ERROR] Server timeout: $e');
       } catch (e) {
-        print('[API ERROR] Server Side/API Error: $e');
+        debugPrint('[API ERROR] Server Side/API Error: $e');
       }
       attempts++;
-      if (attempts < 3) {
-        await Future.delayed(const Duration(seconds: 1));
+      if (attempts < 2) {
+        await Future.delayed(const Duration(milliseconds: 500));
       }
     }
     return null;
@@ -909,9 +921,9 @@ class _MobileHomeState extends State<MobileHome>
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
         height: 56,
         decoration: BoxDecoration(
           color: color,
@@ -923,18 +935,31 @@ class _MobileHomeState extends State<MobileHome>
                 offset: const Offset(0, 4))
           ],
         ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16)),
-          ],
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          splashColor: Colors.white24,
+          highlightColor: Colors.white12,
+          onTap: () {
+            try {
+              HapticFeedback.mediumImpact();
+              SystemSound.play(SystemSoundType.click);
+            } catch (_) {}
+            onTap();
+          },
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(label,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -1156,47 +1181,82 @@ class _MobileHomeState extends State<MobileHome>
                               // ── Scan Check-In/Out button ────────────
                               Flexible(
                                 child: GestureDetector(
+                                  onTapDown: (_) {
+                                    try {
+                                      HapticFeedback.mediumImpact();
+                                      SystemSound.play(SystemSoundType.click);
+                                    } catch (_) {}
+                                    if (mounted) {
+                                      setState(() => _pressingScan = true);
+                                    }
+                                  },
+                                  onTapUp: (_) {
+                                    if (mounted) {
+                                      setState(() => _pressingScan = false);
+                                    }
+                                  },
+                                  onTapCancel: () {
+                                    if (mounted) {
+                                      setState(() => _pressingScan = false);
+                                    }
+                                  },
                                   onTap: _onScanTap,
-                                  child: AnimatedContainer(
-                                    duration:
-                                        const Duration(milliseconds: 160),
+                                  child: AnimatedScale(
+                                    scale: _pressingScan ? 0.93 : 1.0,
+                                    duration: const Duration(milliseconds: 110),
                                     curve: Curves.easeOut,
-                                    height: 46,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10),
-                                    decoration: BoxDecoration(
-                                      color: FlavorConfig
-                                          .instance.primaryColor,
-                                      borderRadius:
-                                          BorderRadius.circular(16),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black26,
-                                          blurRadius: 8,
-                                          offset: Offset(0, 4),
-                                        )
-                                      ],
-                                    ),
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.qr_code_scanner,
-                                              color: Colors.white, size: 18),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            AppLocalizations.of(context)!
-                                                .scanCheckInOut,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 140),
+                                      curve: Curves.easeOut,
+                                      height: 46,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        color: _pressingScan
+                                            ? FlavorConfig.instance.primaryColor
+                                                .withOpacity(0.85)
+                                            : FlavorConfig
+                                                .instance.primaryColor,
+                                        borderRadius:
+                                            BorderRadius.circular(16),
+                                        boxShadow: _pressingScan
+                                            ? const [
+                                                BoxShadow(
+                                                  color: Colors.black26,
+                                                  blurRadius: 3,
+                                                  offset: Offset(0, 1),
+                                                )
+                                              ]
+                                            : const [
+                                                BoxShadow(
+                                                  color: Colors.black26,
+                                                  blurRadius: 8,
+                                                  offset: Offset(0, 4),
+                                                )
+                                              ],
+                                      ),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.qr_code_scanner,
+                                                color: Colors.white, size: 18),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              AppLocalizations.of(context)!
+                                                  .scanCheckInOut,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1208,48 +1268,85 @@ class _MobileHomeState extends State<MobileHome>
                                 const SizedBox(width: 8),
                                 Flexible(
                                   child: GestureDetector(
+                                    onTapDown: (_) {
+                                      try {
+                                        HapticFeedback.mediumImpact();
+                                        SystemSound.play(SystemSoundType.click);
+                                      } catch (_) {}
+                                      if (mounted) {
+                                        setState(() => _pressingRemote = true);
+                                      }
+                                    },
+                                    onTapUp: (_) {
+                                      if (mounted) {
+                                        setState(() => _pressingRemote = false);
+                                      }
+                                    },
+                                    onTapCancel: () {
+                                      if (mounted) {
+                                        setState(() => _pressingRemote = false);
+                                      }
+                                    },
                                     onTap: _onRemoteTap,
-                                    child: AnimatedContainer(
+                                    child: AnimatedScale(
+                                      scale: _pressingRemote ? 0.93 : 1.0,
                                       duration:
-                                          const Duration(milliseconds: 160),
+                                          const Duration(milliseconds: 110),
                                       curve: Curves.easeOut,
-                                      height: 46,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10),
-                                      decoration: BoxDecoration(
-                                        color: FlavorConfig
-                                            .instance.secondaryColor,
-                                        borderRadius:
-                                            BorderRadius.circular(16),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Colors.black26,
-                                            blurRadius: 8,
-                                            offset: Offset(0, 4),
-                                          )
-                                        ],
-                                      ),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            const Icon(Icons.wifi_tethering,
-                                                color: Colors.white,
-                                                size: 18),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              AppLocalizations.of(context)!
-                                                  .remoteChecking,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w800,
+                                      child: AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 140),
+                                        curve: Curves.easeOut,
+                                        height: 46,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10),
+                                        decoration: BoxDecoration(
+                                          color: _pressingRemote
+                                              ? FlavorConfig
+                                                  .instance.secondaryColor
+                                                  .withOpacity(0.85)
+                                              : FlavorConfig
+                                                  .instance.secondaryColor,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          boxShadow: _pressingRemote
+                                              ? const [
+                                                  BoxShadow(
+                                                    color: Colors.black26,
+                                                    blurRadius: 3,
+                                                    offset: Offset(0, 1),
+                                                  )
+                                                ]
+                                              : const [
+                                                  BoxShadow(
+                                                    color: Colors.black26,
+                                                    blurRadius: 8,
+                                                    offset: Offset(0, 4),
+                                                  )
+                                                ],
+                                        ),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(Icons.wifi_tethering,
+                                                  color: Colors.white,
+                                                  size: 18),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                AppLocalizations.of(context)!
+                                                    .remoteChecking,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1298,27 +1395,31 @@ class _MobileHomeState extends State<MobileHome>
               ])),
           actions: <Widget>[
             // Manual sync button (Only visible when pending sync data exists)
-            FutureBuilder<int>(
-              future: OfflineAttendanceService.instance.getPendingCount(),
-              builder: (context, snapshot) {
-                final count = snapshot.data ?? 0;
+            ValueListenableBuilder<int>(
+              valueListenable: OfflineAttendanceService.instance.pendingCountNotifier,
+              builder: (context, count, _) {
                 if (count <= 0) return const SizedBox.shrink();
 
                 return GestureDetector(
                   onTap: () async {
                     try {
+                      HapticFeedback.lightImpact();
+                    } catch (_) {}
+                    try {
                       final results =
                           await OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true);
                       final success = results['success'] ?? 0;
                       final failed = results['failed'] ?? 0;
-                      showTopToast(
-                        AppLocalizations.of(context)!.syncedCountFailedCount(success, failed),
-                        background: Colors.green,
-                      );
+                      if (mounted) {
+                        showTopToast(
+                          AppLocalizations.of(context)!.syncedCountFailedCount(success, failed),
+                          background: success > 0 ? Colors.green : Colors.orange,
+                        );
+                      }
                     } catch (e) {
-                      showTopToast('Sync failed', background: Colors.red);
-                    } finally {
-                      if (mounted) setState(() {});
+                      if (mounted) {
+                        showTopToast('Sync failed', background: Colors.red);
+                      }
                     }
                   },
                   child: Container(

@@ -38,6 +38,7 @@ class QrScannerPage extends StatefulWidget {
 
 class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProviderStateMixin {
   bool _scanned = false;
+  bool _scanSuccess = false;
   final MobileScannerController _controller = MobileScannerController();
   String? _message;
   bool _isError = false;
@@ -250,25 +251,32 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
     );
   }
 
-  Future<void> _buzzOnScan() async {
+  Future<void> _playScanFeedback({required bool success}) async {
+    unawaited(SecurityService.playScanTone(success: success));
     try {
       final hasVibrator = await Vibration.hasVibrator();
       if (hasVibrator == true) {
-        // short, subtle vibration
-        await Vibration.vibrate(duration: 60, amplitude: 80);
+        if (success) {
+          await Vibration.vibrate(duration: 75, amplitude: 160);
+        } else {
+          await Vibration.vibrate(pattern: [0, 120, 80, 160], intensities: [0, 200, 0, 255]);
+        }
       } else {
-        HapticFeedback.mediumImpact();
+        if (success) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.heavyImpact();
+        }
       }
     } catch (_) {
       try {
-        HapticFeedback.selectionClick();
+        if (success) {
+          HapticFeedback.mediumImpact();
+        } else {
+          HapticFeedback.vibrate();
+        }
       } catch (_) {}
     }
-
-    // Optional fallback sound (some devices silence/disable haptics)
-    try {
-      SystemSound.play(SystemSoundType.click);
-    } catch (_) {}
   }
 
   void _setMessage(String msg, {bool isError = false}) {
@@ -336,9 +344,16 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
 
         setState(() {
           _scanned = true; // Briefly pause scanning
+          _scanSuccess = false;
+          _isError = false;
         });
 
-        _buzzOnScan();
+        // Subtle tactile tick on initial barcode lock-on + brief pause so scan feels deliberate
+        try {
+          HapticFeedback.selectionClick();
+        } catch (_) {}
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (!mounted) return;
 
         Position? position = _latestPosition;
         if (position == null) {
@@ -363,11 +378,13 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
         }
 
         if (position == null) {
+          await _playScanFeedback(success: false);
           _setMessage('Location not available', isError: true);
-          Future.delayed(const Duration(milliseconds: 2000), () {
+          Future.delayed(const Duration(milliseconds: 2200), () {
             if (!mounted) return;
             setState(() {
               _scanned = false;
+              _isError = false;
               _message = null;
             });
           });
@@ -380,6 +397,7 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
           context: context,
         );
         if (!isClean) {
+          await _playScanFeedback(success: false);
           _controller.stop();
           return;
         }
@@ -413,6 +431,7 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
               context: context,
             );
             if (!freshClean) {
+              await _playScanFeedback(success: false);
               _controller.stop();
               return;
             }
@@ -430,23 +449,33 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
 
         if (err == null) {
           // --- SUCCESS ---
-          // Only navigate away if the validator confirms everything is OK.
-          _setMessage('QR accepted', isError: false);
+          // Play audible confirmation beep + haptic and show green confirmation overlay before closing
+          await _playScanFeedback(success: true);
+          if (!mounted) return;
+          setState(() {
+            _scanSuccess = true;
+            _isError = false;
+            _message = 'QR accepted';
+          });
           _controller.stop();
+          await Future.delayed(const Duration(milliseconds: 650));
+          if (!mounted) return;
           Navigator.of(context).pop(trimmed);
           return;
         }
 
         // --- ERROR ---
-        // Any error from the validator (distance, invalid QR, etc.) is handled here.
-        // Do not navigate. Show the message and allow re-scanning.
+        // Play negative audible error tone + vibration and display the error message
+        await _playScanFeedback(success: false);
         _setMessage(err, isError: true);
 
         // After a delay, re-enable scanning
-        Future.delayed(const Duration(milliseconds: 2000), () {
+        Future.delayed(const Duration(milliseconds: 2200), () {
           if (!mounted) return;
           setState(() {
             _scanned = false;
+            _scanSuccess = false;
+            _isError = false;
             _message = null;
           });
           try {
@@ -494,14 +523,17 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
                         ),
 
                         // subtle border
-                        Container(
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: _isError
-                                  ? Colors.redAccent
-                                  : Colors.black.withOpacity(0.20),
-                              width: 1.5,
+                              color: _scanSuccess
+                                  ? Colors.greenAccent.shade400
+                                  : (_isError
+                                      ? Colors.redAccent
+                                      : Colors.black.withOpacity(0.20)),
+                              width: (_scanSuccess || _isError) ? 3.0 : 1.5,
                             ),
                           ),
                         ),
@@ -511,7 +543,9 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
                           left: 10,
                           top: 10,
                           child: _Corner(
-                            color: _isError ? Colors.redAccent : Colors.white,
+                            color: _scanSuccess
+                                ? Colors.greenAccent.shade400
+                                : (_isError ? Colors.redAccent : Colors.white),
                             length: cornerLen,
                             stroke: cornerStroke,
                             topLeft: true,
@@ -521,7 +555,9 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
                           right: 10,
                           top: 10,
                           child: _Corner(
-                            color: _isError ? Colors.redAccent : Colors.white,
+                            color: _scanSuccess
+                                ? Colors.greenAccent.shade400
+                                : (_isError ? Colors.redAccent : Colors.white),
                             length: cornerLen,
                             stroke: cornerStroke,
                             topRight: true,
@@ -531,7 +567,9 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
                           left: 10,
                           bottom: 10,
                           child: _Corner(
-                            color: _isError ? Colors.redAccent : Colors.white,
+                            color: _scanSuccess
+                                ? Colors.greenAccent.shade400
+                                : (_isError ? Colors.redAccent : Colors.white),
                             length: cornerLen,
                             stroke: cornerStroke,
                             bottomLeft: true,
@@ -541,12 +579,80 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
                           right: 10,
                           bottom: 10,
                           child: _Corner(
-                            color: _isError ? Colors.redAccent : Colors.white,
+                            color: _scanSuccess
+                                ? Colors.greenAccent.shade400
+                                : (_isError ? Colors.redAccent : Colors.white),
                             length: cornerLen,
                             stroke: cornerStroke,
                             bottomRight: true,
                           ),
                         ),
+
+                        if (_scanSuccess)
+                          Container(
+                            color: Colors.black.withOpacity(0.65),
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade600,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.greenAccent.withOpacity(0.45),
+                                          blurRadius: 18,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.white,
+                                      size: 46,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  const Text(
+                                    'QR Verified',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                        if (_isError && _scanned && !_isServerErrorActive)
+                          Container(
+                            color: Colors.black.withOpacity(0.60),
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.shade700,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.redAccent.withOpacity(0.45),
+                                      blurRadius: 18,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  color: Colors.white,
+                                  size: 46,
+                                ),
+                              ),
+                            ),
+                          ),
 
                         if (!_accuracyAchieved)
                           Container(

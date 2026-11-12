@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import CoreLocation
+import AudioToolbox
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -33,6 +34,19 @@ import CoreLocation
         } else if call.method == "isMockLocation" {
           result(self.isMockLocation())
         } else if call.method == "isAutoTimeEnabled" {
+          result(true)
+        } else if call.method == "playScanTone" {
+          let args = call.arguments as? [String: Any]
+          let success = (args?["success"] as? Bool) ?? true
+          let feedback = UINotificationFeedbackGenerator()
+          feedback.prepare()
+          if success {
+            AudioServicesPlaySystemSound(1057)
+            feedback.notificationOccurred(.success)
+          } else {
+            AudioServicesPlaySystemSound(1053)
+            feedback.notificationOccurred(.error)
+          }
           result(true)
         } else {
           result(FlutterMethodNotImplemented)
