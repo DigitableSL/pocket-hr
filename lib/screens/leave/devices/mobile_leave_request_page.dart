@@ -1024,7 +1024,7 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppLocalizations.of(context)!.dateLabel.toUpperCase(),
+                          AppLocalizations.of(context)!.fromLabel.toUpperCase(),
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,

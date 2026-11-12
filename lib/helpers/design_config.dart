@@ -238,7 +238,7 @@ class DesignConfig {
     String resolveSubtitle() {
       final comp = (storage.getItem('company') ??
               storage.getItem('tenant') ??
-              FlavorConfig.instance.name)
+              FlavorConfig.instance.appName)
           .toString()
           .trim();
       if (comp.isEmpty) return '';
