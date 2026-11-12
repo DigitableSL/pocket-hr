@@ -18,6 +18,7 @@ class QrScannerPage extends StatefulWidget {
   final VoidCallback? onRemotePressed;
   final Function(Position position)? onLocationUpdated;
   final bool tenantCoordinatesFailed;
+  final Position? initialPosition;
 
   const QrScannerPage({
     Key? key,
@@ -28,6 +29,7 @@ class QrScannerPage extends StatefulWidget {
     this.onRemotePressed,
     this.onLocationUpdated,
     this.tenantCoordinatesFailed = false,
+    this.initialPosition,
   }) : super(key: key);
 
   @override
@@ -45,18 +47,28 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
   final LocalStorage storage = LocalStorage('pocketHR');
 
   StreamSubscription<Position>? _positionStream;
+  Position? _latestPosition;
   int _locationAttempts = 0;
   bool _accuracyAchieved = false;
   double? _currentAccuracy;
   late AnimationController _satelliteAnimationController;
   Timer? _stepTimer;
+  Timer? _fallbackTimer;
   int _locationStepIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialPosition != null) {
+      _latestPosition = widget.initialPosition;
+      _currentAccuracy = widget.initialPosition!.accuracy;
+      _accuracyAchieved = true;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SecurityService.verifyDeviceSecurity(context: context);
+      if (widget.initialPosition != null) {
+        widget.onLocationUpdated?.call(widget.initialPosition!);
+      }
     });
     _satelliteAnimationController = AnimationController(
       vsync: this,
@@ -71,13 +83,26 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
   void _startLocationListening() async {
     _locationStepIndex = 0;
     _stepTimer?.cancel();
-    _stepTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-      if (mounted) {
+    _fallbackTimer?.cancel();
+
+    if (!_accuracyAchieved) {
+      _stepTimer = Timer.periodic(const Duration(milliseconds: 1200), (timer) {
+        if (mounted) {
+          setState(() {
+            _locationStepIndex++;
+          });
+        }
+      });
+
+      // Ensure the satellite overlay never loops indefinitely if indoor GPS is slow
+      _fallbackTimer = Timer(const Duration(seconds: 4), () {
+        if (!mounted || _accuracyAchieved) return;
+        _stepTimer?.cancel();
         setState(() {
-          _locationStepIndex++;
+          _accuracyAchieved = true;
         });
-      }
-    });
+      });
+    }
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -90,15 +115,39 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
       }
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         _stepTimer?.cancel();
-        setState(() {
-          _accuracyAchieved = true;
-        });
+        _fallbackTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _accuracyAchieved = true;
+          });
+        }
         return;
       }
 
-      final LocationSettings locationSettings = LocationSettings(
+      // Immediately seed with last known or current position so stationary users don't wait
+      if (_latestPosition == null) {
+        unawaited(() async {
+          try {
+            final lastPos = await Geolocator.getLastKnownPosition();
+            if (lastPos != null && mounted && _latestPosition == null) {
+              _handleNewLocation(lastPos);
+            }
+          } catch (_) {}
+          try {
+            final currentPos = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.best,
+              timeLimit: const Duration(seconds: 4),
+            );
+            if (mounted) {
+              _handleNewLocation(currentPos);
+            }
+          } catch (_) {}
+        }());
+      }
+
+      const LocationSettings locationSettings = LocationSettings(
         accuracy: LocationAccuracy.best,
-        distanceFilter: 5,
+        distanceFilter: 0,
       );
 
       _positionStream = Geolocator.getPositionStream(
@@ -110,9 +159,12 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
       });
     } catch (_) {
       _stepTimer?.cancel();
-      setState(() {
-        _accuracyAchieved = true;
-      });
+      _fallbackTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _accuracyAchieved = true;
+        });
+      }
     }
   }
 
@@ -123,23 +175,26 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
       return;
     }
     debugPrint('[Location] New coordinate: lat=${position.latitude}, lng=${position.longitude}, accuracy=${position.accuracy}m');
+    _latestPosition = position;
     widget.onLocationUpdated?.call(position);
     setState(() {
       _currentAccuracy = position.accuracy;
     });
 
-    if (position.accuracy <= 5.0) {
-      _stepTimer?.cancel();
-      setState(() {
-        _accuracyAchieved = true;
-      });
-      _positionStream?.cancel();
-    } else {
-      _locationAttempts++;
-      if (_locationAttempts >= 2) {
+    if (!_accuracyAchieved) {
+      if (position.accuracy <= 25.0) {
         _stepTimer?.cancel();
-        _positionStream?.cancel();
-        _showAccuracyDialog();
+        _fallbackTimer?.cancel();
+        setState(() {
+          _accuracyAchieved = true;
+        });
+      } else {
+        _locationAttempts++;
+        if (_locationAttempts >= 2) {
+          _stepTimer?.cancel();
+          _fallbackTimer?.cancel();
+          _showAccuracyDialog();
+        }
       }
     }
   }
@@ -240,6 +295,7 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
   @override
   void dispose() {
     _stepTimer?.cancel();
+    _fallbackTimer?.cancel();
     _positionStream?.cancel();
     _satelliteAnimationController.dispose();
     _controller.dispose();
@@ -280,26 +336,31 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
 
         setState(() {
           _scanned = true; // Briefly pause scanning
-          _isFetchingLocation = true;
         });
 
         _buzzOnScan();
 
-        Position? position;
-        try {
-          position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.best,
-            timeLimit: const Duration(seconds: 10),
-          );
-        } catch (_) {
+        Position? position = _latestPosition;
+        if (position == null) {
+          setState(() {
+            _isFetchingLocation = true;
+          });
           try {
-            position = await Geolocator.getLastKnownPosition();
-          } catch (_) {}
+            position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.best,
+              timeLimit: const Duration(seconds: 4),
+            );
+          } catch (_) {
+            try {
+              position = await Geolocator.getLastKnownPosition();
+            } catch (_) {}
+          }
+          if (mounted) {
+            setState(() {
+              _isFetchingLocation = false;
+            });
+          }
         }
-
-        setState(() {
-          _isFetchingLocation = false;
-        });
 
         if (position == null) {
           _setMessage('Location not available', isError: true);
@@ -326,7 +387,46 @@ class _QrScannerPageState extends State<QrScannerPage> with SingleTickerProvider
         widget.onLocationUpdated?.call(position);
 
         final trimmed = code.trim();
-        final err = widget.validator?.call(trimmed);
+        String? err = widget.validator?.call(trimmed);
+
+        // If the cached/streamed coordinate was from when the user tapped the button
+        // while walking toward the QR wall, silently take a fresh GPS fix at the scan
+        // point and re-validate before rejecting.
+        if (err != null) {
+          try {
+            if (mounted) {
+              setState(() {
+                _isFetchingLocation = true;
+              });
+            }
+            final freshPos = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.best,
+              timeLimit: const Duration(seconds: 3),
+            );
+            if (mounted) {
+              setState(() {
+                _isFetchingLocation = false;
+              });
+            }
+            final freshClean = await SecurityService.verifyDeviceSecurity(
+              currentPosition: freshPos,
+              context: context,
+            );
+            if (!freshClean) {
+              _controller.stop();
+              return;
+            }
+            _latestPosition = freshPos;
+            widget.onLocationUpdated?.call(freshPos);
+            err = widget.validator?.call(trimmed);
+          } catch (_) {
+            if (mounted) {
+              setState(() {
+                _isFetchingLocation = false;
+              });
+            }
+          }
+        }
 
         if (err == null) {
           // --- SUCCESS ---

@@ -13,6 +13,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:localstorage/localstorage.dart';
 import 'package:cn_pocket_hr/services/offline_attendance_service.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
+import 'package:cn_pocket_hr/screens/location/location_permission_dialog.dart';
 import 'package:octo_image/octo_image.dart';
 import 'package:cn_pocket_hr/constants/slideanimation.dart';
 import 'package:cn_pocket_hr/screens/notifications/notifications.dart';
@@ -603,24 +604,84 @@ class _MobileHomeState extends State<MobileHome>
 
   // ── NEW: Scan → bottom sheet flow ───────────────────────────────────────
 
+  Future<Position?> _ensureReadyPosition() async {
+    if (_currentPosition != null) {
+      final isClean = await SecurityService.verifyPosition(
+        _currentPosition!,
+        context: mounted ? context : null,
+      );
+      if (isClean) return _currentPosition;
+    }
+
+    Position? pos;
+    try {
+      pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 4),
+      );
+    } catch (_) {
+      try {
+        pos = await Geolocator.getLastKnownPosition();
+      } catch (_) {}
+    }
+
+    if (pos != null && mounted) {
+      final isClean =
+          await SecurityService.verifyPosition(pos, context: context);
+      if (!isClean) return null;
+      _currentPosition = pos;
+      latitude = pos.latitude;
+      longitude = pos.longitude;
+      accuracy = pos.accuracy;
+      unawaited(getAddressFromLatLang(pos));
+    }
+
+    if (streamSubscription == null) {
+      unawaited(getLocation());
+    }
+    return _currentPosition;
+  }
+
   Future<void> _onScanTap() async {
     if (_punchCooldown || _qrBusy) return;
     _qrBusy = true;
-    setState(() {
-      qrLatitude = null;
-      qrLongitude = null;
-      qrAccuracy = null;
-      qrAddress = null;
-    });
     try {
+      final isSecurityClean =
+          await SecurityService.verifyDeviceSecurity(context: context);
+      if (!mounted || !isSecurityClean) return;
+
+      final hasLocationPermission = await showLocationPermissionDialog(context);
+      if (!mounted || !hasLocationPermission) return;
+
+      final userId = storage.getItem('uid')?.toString() ?? '';
+
       if (!apiService.qrEnable) {
-        // QR not required — go straight to punch selection
+        await _ensureReadyPosition();
+        if (!mounted) return;
         _showPunchBottomSheet(isRemote: false);
         return;
       }
 
-      final userId = storage.getItem('uid')?.toString() ?? '';
-      final locationsResult = await _fetchLocationsWithRetry(userId);
+      // Fetch site coordinates and ensure GPS coordinate is ready in parallel
+      final results = await Future.wait<dynamic>([
+        _fetchLocationsWithRetry(userId),
+        _ensureReadyPosition(),
+      ]);
+      if (!mounted) return;
+
+      final locationsResult = results[0] as List<UserLocation>?;
+      final readyPos = results[1] as Position?;
+
+      setState(() {
+        qrLatitude = readyPos?.latitude;
+        qrLongitude = readyPos?.longitude;
+        qrAccuracy = readyPos?.accuracy;
+        qrAddress = address;
+      });
+      if (readyPos != null && (qrAddress == null || qrAddress!.isEmpty)) {
+        unawaited(_getQrAddressFromLatLang(readyPos));
+      }
+
       final bool tenantCoordinatesFailed = locationsResult == null;
       final List<UserLocation> locations = locationsResult ?? [];
       final usernameForQr = (storage.getItem('name') ??
@@ -635,7 +696,9 @@ class _MobileHomeState extends State<MobileHome>
             username: usernameForQr,
             showRemoteButton: false,
             tenantCoordinatesFailed: tenantCoordinatesFailed,
+            initialPosition: readyPos,
             onLocationUpdated: (pos) {
+              if (!mounted) return;
               setState(() {
                 qrLatitude = pos.latitude;
                 qrLongitude = pos.longitude;
@@ -746,9 +809,23 @@ class _MobileHomeState extends State<MobileHome>
     }
   }
 
-  void _onRemoteTap() {
-    if (_punchCooldown) return;
-    _showPunchBottomSheet(isRemote: true);
+  Future<void> _onRemoteTap() async {
+    if (_punchCooldown || _qrBusy) return;
+    _qrBusy = true;
+    try {
+      final isSecurityClean =
+          await SecurityService.verifyDeviceSecurity(context: context);
+      if (!mounted || !isSecurityClean) return;
+
+      final hasLocationPermission = await showLocationPermissionDialog(context);
+      if (!mounted || !hasLocationPermission) return;
+
+      await _ensureReadyPosition();
+      if (!mounted) return;
+      _showPunchBottomSheet(isRemote: true);
+    } finally {
+      _qrBusy = false;
+    }
   }
 
   void _showPunchBottomSheet({required bool isRemote}) {
