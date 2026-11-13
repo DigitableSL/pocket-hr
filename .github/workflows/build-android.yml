@@ -48,30 +48,22 @@ on:
           - production
 
 jobs:
-  build-android:
-    name: Build Android (${{ github.event.inputs.tenant || 'domex' }})
+  prepare:
+    name: Resolve Build Configuration
     runs-on: ubuntu-latest
-    env:
-      NODE_OPTIONS: "--no-deprecation"
-      GRADLE_OPTS: "-Dorg.gradle.vfs.watch=false"
-
+    outputs:
+      tenant: ${{ steps.config.outputs.tenant }}
+      target: ${{ steps.config.outputs.target }}
+      format: ${{ steps.config.outputs.format }}
+      deploy: ${{ steps.config.outputs.deploy }}
+      track: ${{ steps.config.outputs.track }}
+      package_name: ${{ steps.config.outputs.package_name }}
+      build_number: ${{ steps.config.outputs.build_number }}
     steps:
-      - name: Checkout Repository
+      - name: Checkout pubspec.yaml
         uses: actions/checkout@v7
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v6
         with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.9'
-          channel: 'stable'
-          cache: true
+          sparse-checkout: pubspec.yaml
 
       - name: Determine Tenant, Package Name, and Build Options
         id: config
@@ -139,6 +131,33 @@ jobs:
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
 
+  build-android:
+    name: Build Android (${{ needs.prepare.outputs.tenant }})
+    needs: prepare
+    environment: ${{ needs.prepare.outputs.tenant }}
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: "--no-deprecation"
+      GRADLE_OPTS: "-Dorg.gradle.vfs.watch=false"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
       - name: Configure Android Release Signing (if secrets provided)
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -163,46 +182,46 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK (Split per ABI)
-        if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
+        if: needs.prepare.outputs.format == 'apk' || needs.prepare.outputs.format == 'both'
         run: |
           flutter build apk --release \
             --split-per-abi \
             --tree-shake-icons \
             --android-skip-build-dependency-validation \
-            --flavor ${{ steps.config.outputs.tenant }} \
-            -t ${{ steps.config.outputs.target }} \
-            --dart-define=tenant=${{ steps.config.outputs.tenant }} \
-            --build-number=${{ steps.config.outputs.build_number }}
+            --flavor ${{ needs.prepare.outputs.tenant }} \
+            -t ${{ needs.prepare.outputs.target }} \
+            --dart-define=tenant=${{ needs.prepare.outputs.tenant }} \
+            --build-number=${{ needs.prepare.outputs.build_number }}
 
       - name: Upload APK Artifact (arm64-v8a)
-        if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
+        if: needs.prepare.outputs.format == 'apk' || needs.prepare.outputs.format == 'both'
         uses: actions/upload-artifact@v7
         with:
-          name: apk-${{ steps.config.outputs.tenant }}-arm64-v8a-release-b${{ github.run_number }}
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-${{ steps.config.outputs.tenant }}-release.apk
+          name: apk-${{ needs.prepare.outputs.tenant }}-arm64-v8a-release-b${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-${{ needs.prepare.outputs.tenant }}-release.apk
           if-no-files-found: error
 
       - name: Build Release App Bundle (AAB) for Play Store
-        if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
+        if: needs.prepare.outputs.format == 'appbundle' || needs.prepare.outputs.format == 'both'
         run: |
           flutter build appbundle --release \
             --tree-shake-icons \
             --android-skip-build-dependency-validation \
-            --flavor ${{ steps.config.outputs.tenant }} \
-            -t ${{ steps.config.outputs.target }} \
-            --dart-define=tenant=${{ steps.config.outputs.tenant }} \
-            --build-number=${{ steps.config.outputs.build_number }}
+            --flavor ${{ needs.prepare.outputs.tenant }} \
+            -t ${{ needs.prepare.outputs.target }} \
+            --dart-define=tenant=${{ needs.prepare.outputs.tenant }} \
+            --build-number=${{ needs.prepare.outputs.build_number }}
 
       - name: Upload AAB Artifact
-        if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
+        if: needs.prepare.outputs.format == 'appbundle' || needs.prepare.outputs.format == 'both'
         uses: actions/upload-artifact@v7
         with:
-          name: aab-${{ steps.config.outputs.tenant }}-release-b${{ github.run_number }}
-          path: build/app/outputs/bundle/${{ steps.config.outputs.tenant }}Release/app-${{ steps.config.outputs.tenant }}-release.aab
+          name: aab-${{ needs.prepare.outputs.tenant }}-release-b${{ github.run_number }}
+          path: build/app/outputs/bundle/${{ needs.prepare.outputs.tenant }}Release/app-${{ needs.prepare.outputs.tenant }}-release.aab
           if-no-files-found: error
 
       - name: Verify Play Store Release Secrets
-        if: steps.config.outputs.deploy == 'true'
+        if: needs.prepare.outputs.deploy == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           PLAY_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
@@ -217,12 +236,12 @@ jobs:
           fi
 
       - name: Deploy AAB to Google Play Console
-        if: steps.config.outputs.deploy == 'true'
+        if: needs.prepare.outputs.deploy == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ steps.config.outputs.package_name }}
-          releaseFiles: build/app/outputs/bundle/${{ steps.config.outputs.tenant }}Release/app-${{ steps.config.outputs.tenant }}-release.aab
-          track: ${{ steps.config.outputs.track }}
+          packageName: ${{ needs.prepare.outputs.package_name }}
+          releaseFiles: build/app/outputs/bundle/${{ needs.prepare.outputs.tenant }}Release/app-${{ needs.prepare.outputs.tenant }}-release.aab
+          track: ${{ needs.prepare.outputs.track }}
           status: completed
 
