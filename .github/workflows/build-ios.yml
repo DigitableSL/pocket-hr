@@ -3,6 +3,7 @@ name: Build iOS IPA
 on:
   push:
     branches:
+      - domex
       - human-v2
   workflow_dispatch:
     inputs:
