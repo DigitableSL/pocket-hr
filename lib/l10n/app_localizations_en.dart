@@ -1,5 +1,3 @@
-// ignore: unused_import
-import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -255,8 +253,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leaveReject => 'Leave Reject';
 
   @override
-  String get scannText =>
-      'please keep the QR code in the center of the square.It will be scanned automatically.';
+  String get scannText => 'please keep the QR code in the center of the square.It will be scanned automatically.';
 
   @override
   String get salarySlips => 'Salary Slips';
@@ -385,10 +382,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get overHeader => 'OVER';
 
   @override
-  String get allowanceDeductions => 'Allowances & Deductions';
+  String get allowanceDeductions => 'Allowances';
 
   @override
-  String get debtLoans => 'Debts & Loans';
+  String get debtLoans => 'Loans';
 
   @override
   String get logoutTitle => 'Logout';
@@ -496,8 +493,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qrNoCoordinates => 'QR does not contain coordinates';
 
   @override
-  String get invalidQrServerError =>
-      'QR code is not valid or the server is unavailable. Please try again.';
+  String get invalidQrServerError => 'QR code is not valid or the server is unavailable. Please try again.';
 
   @override
   String qrCoordinatesNotMatch(Object meters) {
@@ -505,12 +501,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get serverDidNotReturnCoordinates =>
-      'Coordinates not found. Please try again.';
+  String get serverDidNotReturnCoordinates => 'Coordinates not found. Please try again.';
 
   @override
-  String get invalidServerCoordinates =>
-      'Invalid coordinates. Please try again.';
+  String get invalidServerCoordinates => 'Invalid coordinates. Please try again.';
 
   @override
   String qrMatchesServerLocation(Object meters) {
@@ -526,8 +520,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noInternetConnection => 'No internet connection';
 
   @override
-  String get qrValidatedTapToPunch =>
-      'QR validated. Tap Check-In / Check-Out within 20 seconds.';
+  String get qrValidatedTapToPunch => 'QR validated. Tap Check-In / Check-Out within 20 seconds.';
 
   @override
   String qrValidClickButton(String button) {
@@ -545,8 +538,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get qrCoordinatesMismatchMessage =>
-      'Check-in/out is not allowed at this location.';
+  String get qrCoordinatesMismatchMessage => 'Check-in/out is not allowed at this location.';
 
   @override
   String get remoteChecking => 'Remote Clocking';
@@ -570,8 +562,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filedToPerform => 'Failed to perform action.';
 
   @override
-  String get activeRemoteCheking =>
-      'Remote checking active.Tap Check-In / Check-Out within 20 seconds.';
+  String get activeRemoteCheking => 'Remote checking active.Tap Check-In / Check-Out within 20 seconds.';
 
   @override
   String get approvedLable => 'approved';
@@ -595,14 +586,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get availableBalance => 'Available Balance';
 
   @override
-  String get submitRequest => 'Submit Request';
+  String get submitRequest => 'Submit';
 
   @override
   String get leaveAppliedSuccessfully => 'Leave applied successfully';
 
   @override
-  String get invalidDetailsPleaseCheckYourForm =>
-      'Invalid details. Please check your form.';
+  String get invalidDetailsPleaseCheckYourForm => 'Invalid details. Please check your form.';
 
   @override
   String get failedToSubmitLeave => 'Failed to submit leave.';
@@ -617,7 +607,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get morning => ' Two hours in morning';
 
   @override
-  String get evening => ' Two hours in the Evening';
+  String get evening => 'Evening (2 hrs)';
 
   @override
   String get morningLabel => 'Morning';
@@ -638,8 +628,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myTeam => 'My Team';
 
   @override
-  String get serverError =>
-      'This page cant be reached. please contact your company';
+  String get serverError => 'This page cant be reached. please contact your company';
 
   @override
   String get rs => 'Rs.';
@@ -1043,8 +1032,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appUpdateRequiredTitle => 'App Update Required';
 
   @override
-  String get appUpdateRequiredMessage =>
-      'Please update your app to the latest version to continue.';
+  String get appUpdateRequiredMessage => 'Please update your app to the latest version to continue.';
 
   @override
   String get appUpdateRequiredButton => 'Update Now';
@@ -1081,19 +1069,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccountConfirmationTitle => 'Delete Account Request';
 
   @override
-  String get deleteAccountConfirmationMessage =>
-      'Are you sure you want to request deletion of your account? This action will submit an account deletion request to your company administrator.';
+  String get deleteAccountConfirmationMessage => 'Are you sure you want to request deletion of your account? This action will submit an account deletion request to your company administrator.';
 
   @override
   String get confirmDeleteAccount => 'Delete My Account';
 
   @override
-  String get deleteAccountRequestedSuccess =>
-      'Account deletion request submitted successfully.';
+  String get deleteAccountRequestedSuccess => 'Account deletion request submitted successfully.';
 
   @override
-  String get incorrectDateTimeError =>
-      'Your device date and time are incorrect. Please correct them in settings and log in again.';
+  String get incorrectDateTimeError => 'Your device date and time are incorrect. Please correct them in settings and log in again.';
 
   @override
   String get timeHeader => 'TIME';
@@ -1117,8 +1102,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qrLabel => 'QR';
 
   @override
-  String get failedToConnectToServer =>
-      'Unable to connect. Please check your internet connection and try again..';
+  String get failedToConnectToServer => 'Unable to connect. Please check your internet connection and try again..';
 
   @override
   String get myAttendance => 'My Attendance';
@@ -1184,16 +1168,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get totalLabel => 'Total';
 
   @override
-  String get failedToRetrieveCoordinatesCheckInOutEnabled =>
-      'Failed to retrieve site coordinates. Check-in/out locally is enabled.';
+  String get failedToRetrieveCoordinatesCheckInOutEnabled => 'Failed to retrieve site coordinates. Check-in/out locally is enabled.';
 
   @override
-  String get savedLocallyWillSyncWhenOnline =>
-      'Saved locally, will sync when online';
+  String get savedLocallyWillSyncWhenOnline => 'Saved locally, will sync when online';
 
   @override
-  String get serverErrorSavedLocallyWillSyncLater =>
-      'Server error. Saved locally, will sync later.';
+  String get serverErrorSavedLocallyWillSyncLater => 'Server error. Saved locally, will sync later.';
 
   @override
   String syncedCountFailedCount(Object success, Object failed) {
@@ -1201,18 +1182,59 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get todoDirectManagerApprovalRequired =>
-      'You must be the direct manager of this employee to approve this request.';
+  String get todoDirectManagerApprovalRequired => 'You must be the direct manager of this employee to approve this request.';
 
   @override
-  String get developerModeDetectedError =>
-      'Developer options / USB debugging detected. Please turn off Developer Options in your device settings to use this app.';
+  String get developerModeDetectedError => 'Developer options / USB debugging detected. Please turn off Developer Options in your device settings to use this app.';
 
   @override
-  String get mockLocationDetectedError =>
-      'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.';
+  String get mockLocationDetectedError => 'Mock / Fake location detected. Please disable mock location apps in your device settings to use this app.';
 
   @override
-  String get autoTimeRequiredError =>
-      'Automatic Date & Time is disabled. Please enable \'Set time automatically\' in your device settings to use this app.';
+  String get autoTimeRequiredError => 'Automatic Date & Time is disabled. Please enable \'Set time automatically\' in your device settings to use this app.';
+
+  @override
+  String get approveAction => 'Approve';
+
+  @override
+  String get rejectAction => 'Reject';
+
+  @override
+  String get approveLeave => 'Approve Leave';
+
+  @override
+  String get rejectLeave => 'Reject Leave';
+
+  @override
+  String get selectAction => 'Select Action';
+
+  @override
+  String get tryAgain => 'Try again';
+
+  @override
+  String get openSettings => 'Open Settings';
+
+  @override
+  String get locationSettings => 'Location Settings';
+
+  @override
+  String get youAreOnline => 'You are online';
+
+  @override
+  String get youAreOffline => 'You are offline';
+
+  @override
+  String get userDetails => 'User Details';
+
+  @override
+  String get selectTeam => 'Select Team';
+
+  @override
+  String get resetLabel => 'Reset';
+
+  @override
+  String get enterSixDigitOtp => 'Please enter the 6-digit OTP';
+
+  @override
+  String get otpResentSuccess => 'OTP resent successfully!';
 }

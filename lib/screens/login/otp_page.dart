@@ -1,5 +1,6 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 
 class OtpPage extends StatefulWidget {
   const OtpPage({Key? key}) : super(key: key);
@@ -225,7 +226,7 @@ class _OtpPageState extends State<OtpPage> with TickerProviderStateMixin {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: AutoSizeText('Please enter the 6-digit OTP'),
+          content: AutoSizeText(AppLocalizations.of(context)!.enterSixDigitOtp),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           backgroundColor: Colors.red.shade400,
@@ -259,10 +260,12 @@ class _OtpPageState extends State<OtpPage> with TickerProviderStateMixin {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
-          children: const [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            AutoSizeText('OTP resent successfully!'),
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Flexible(
+              child: AutoSizeText(AppLocalizations.of(context)!.otpResentSuccess),
+            ),
           ],
         ),
         behavior: SnackBarBehavior.floating,

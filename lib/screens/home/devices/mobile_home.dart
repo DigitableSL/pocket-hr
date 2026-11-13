@@ -816,7 +816,7 @@ class _MobileHomeState extends State<MobileHome>
               Text(
                 isRemote
                     ? AppLocalizations.of(context)!.remoteChecking
-                    : 'Select Action',
+                    : AppLocalizations.of(context)!.selectAction,
                 style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,

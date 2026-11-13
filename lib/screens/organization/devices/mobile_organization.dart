@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cn_pocket_hr/helpers/hr_colors.dart';
 import 'package:cn_pocket_hr/helpers/design_config.dart';
 import 'package:cn_pocket_hr/api/api_service.dart';
+import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 
 /// Data Model for Organization Node in Hierarchy Tree
 class OrgNode {
@@ -484,7 +485,7 @@ class _MobileOrganizationState extends State<MobileOrganization>
               _showUserDetailsModal(node);
             },
             icon: Icon(Icons.info_outline, size: 18, color: isEndUser ? Colors.white : HRColors.orangeColor),
-            label: const Text('User Details', style: TextStyle(fontWeight: FontWeight.w600)),
+            label: Text(AppLocalizations.of(context)!.userDetails, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           // Button 2: Select Team (ONLY shown for non-end users with children!)
           if (!isEndUser)
@@ -508,7 +509,7 @@ class _MobileOrganizationState extends State<MobileOrganization>
                 );
               },
               icon: const Icon(Icons.groups_outlined, size: 18),
-              label: const Text('Select Team', style: TextStyle(fontWeight: FontWeight.w600)),
+              label: Text(AppLocalizations.of(context)!.selectTeam, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -737,7 +738,7 @@ class _MobileOrganizationState extends State<MobileOrganization>
                         });
                       },
                       icon: const Icon(Icons.clear, size: 16, color: Colors.red),
-                      label: const Text('Reset', style: TextStyle(color: Colors.red, fontSize: 12)),
+                      label: Text(AppLocalizations.of(context)!.resetLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.red, fontSize: 12)),
                     ),
                 ],
               ),

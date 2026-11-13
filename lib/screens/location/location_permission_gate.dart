@@ -5,6 +5,7 @@ import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cn_pocket_hr/l10n/app_localizations.dart';
 import 'package:cn_pocket_hr/services/security_service.dart';
 
 /// A lightweight startup gate that requests location permission before showing
@@ -190,7 +191,9 @@ class _LocationPermissionGateState extends State<LocationPermissionGate> {
                     ),
                     onPressed: _ensurePermission,
                     child: AutoSizeText(
-                      'Try again',
+                      AppLocalizations.of(context)!.tryAgain,
+                      maxLines: 1,
+                      minFontSize: 10,
                       style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
                   ),
@@ -210,7 +213,9 @@ class _LocationPermissionGateState extends State<LocationPermissionGate> {
                       ),
                       onPressed: _openSettings,
                       child: AutoSizeText(
-                        'Open settings',
+                        AppLocalizations.of(context)!.openSettings,
+                        maxLines: 1,
+                        minFontSize: 10,
                         style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),
@@ -229,7 +234,9 @@ class _LocationPermissionGateState extends State<LocationPermissionGate> {
                       ),
                       onPressed: _openLocationSettings,
                       child: AutoSizeText(
-                        'Open location settings',
+                        AppLocalizations.of(context)!.locationSettings,
+                        maxLines: 1,
+                        minFontSize: 10,
                         style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                     ),

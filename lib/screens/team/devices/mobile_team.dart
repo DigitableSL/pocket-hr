@@ -1003,8 +1003,8 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
             children: [
               const Icon(Icons.check_circle_outline, color: Colors.green),
               const SizedBox(width: 8),
-              Text("Approve Leave",
-                  style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(AppLocalizations.of(context)!.approveLeave,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
             ],
           ),
           content: ConstrainedBox(
@@ -1049,7 +1049,11 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              child: Text('Cancel'),
+              child: Text(
+                AppLocalizations.of(context)!.cancelLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1062,7 +1066,12 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('Approve', style: TextStyle(color: Colors.white)),
+              child: Text(
+                AppLocalizations.of(context)!.approveAction,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -1088,8 +1097,8 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                 children: [
                   const Icon(Icons.cancel_outlined, color: Colors.red),
                   const SizedBox(width: 8),
-                  Text("Reject Leave",
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text(AppLocalizations.of(context)!.rejectLeave,
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                 ],
               ),
               content: ConstrainedBox(
@@ -1169,7 +1178,11 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
                   ),
-                  child: Text('Cancel'),
+                  child: Text(
+                    AppLocalizations.of(context)!.cancelLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: isValid
@@ -1186,7 +1199,12 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text('Reject', style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    AppLocalizations.of(context)!.rejectAction,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );

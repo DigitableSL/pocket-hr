@@ -1110,12 +1110,17 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
                 const Icon(Icons.check_circle_rounded, color: Colors.white, size: 19),
                 const SizedBox(width: 8),
               ],
-              AutoSizeText(
-                '${AppLocalizations.of(context)!.submitRequest} • $badge',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14,
+              Flexible(
+                child: AutoSizeText(
+                  '${AppLocalizations.of(context)!.submitRequest} • $badge',
+                  maxLines: 1,
+                  minFontSize: 10,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
@@ -1214,7 +1219,7 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
 
     if (typeValue == null || typeValue!.isEmpty) {
       await _showTopMessage(
-        'Please select ${AppLocalizations.of(context)!.leaveTypeLabel}',
+        AppLocalizations.of(context)!.pleaseSelectLeaveType,
         error: true,
       );
       return;
@@ -1605,7 +1610,7 @@ class _MobileLeaveRequestPageState extends State<MobileLeaveRequestPage>
     if (_isSubmitting) return;
     if (typeValue == null || typeValue!.isEmpty) {
       await _showTopMessage(
-        'Please select ${AppLocalizations.of(context)!.leaveTypeLabel}',
+        AppLocalizations.of(context)!.pleaseSelectLeaveType,
         error: true,
       );
       return;

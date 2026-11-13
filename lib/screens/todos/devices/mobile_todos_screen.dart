@@ -1305,7 +1305,10 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
             } : null,
             icon: const Icon(Icons.close, size: 18),
             label: AutoSizeText(
-              l10n.rejectedLable,
+              l10n.rejectAction,
+              maxLines: 1,
+              minFontSize: 10,
+              overflow: TextOverflow.ellipsis,
             ),
             style: OutlinedButton.styleFrom(
               foregroundColor: isEnabled ? Colors.red.shade700 : Colors.grey,
@@ -1330,7 +1333,10 @@ class _MobileTodosScreenState extends State<MobileTodosScreen>
             } : null,
             icon: Icon(Icons.check, size: 18, color: isEnabled ? Colors.white : Colors.grey),
             label: AutoSizeText(
-              l10n.approvedLable,
+              l10n.approveAction,
+              maxLines: 1,
+              minFontSize: 10,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(color: isEnabled ? Colors.white : Colors.grey, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(

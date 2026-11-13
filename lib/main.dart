@@ -365,8 +365,14 @@ class PocketHR extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 AutoSizeText(
                                   conn.isOnline
-                                      ? 'You are online'
-                                      : 'You are offline',
+                                      ? (AppLocalizations.of(context)
+                                              ?.youAreOnline ??
+                                          'You are online')
+                                      : (AppLocalizations.of(context)
+                                              ?.youAreOffline ??
+                                          'You are offline'),
+                                  maxLines: 1,
+                                  minFontSize: 11,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,

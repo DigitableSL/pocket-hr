@@ -322,6 +322,9 @@ class _MobileAttendanceState extends State<MobileAttendance>
                           ctx, DateTime(selectedYear, selectedMonth, 1)),
                       child: AutoSizeText(
                         AppLocalizations.of(context)!.confirmLabel,
+                        maxLines: 1,
+                        minFontSize: 10,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: Colors.white, fontWeight: FontWeight.w800),
                       ),
@@ -343,6 +346,9 @@ class _MobileAttendanceState extends State<MobileAttendance>
                       onPressed: () => Navigator.pop(ctx),
                       child: AutoSizeText(
                         AppLocalizations.of(context)!.cancelLabel,
+                        maxLines: 1,
+                        minFontSize: 10,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: Colors.black87, fontWeight: FontWeight.w700),
                       ),

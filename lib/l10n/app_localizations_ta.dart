@@ -1,5 +1,3 @@
-// ignore: unused_import
-import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -18,8 +16,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get apNameText => 'பயணம்';
 
   @override
-  String get introductionOneText =>
-      'பாதுகாப்பான அளவுருக்களைப் பயன்படுத்தி யாருடனும் எங்கும் எதையும் பாதுகாப்பாக ஒழுங்கமைக்கவும்.';
+  String get introductionOneText => 'பாதுகாப்பான அளவுருக்களைப் பயன்படுத்தி யாருடனும் எங்கும் எதையும் பாதுகாப்பாக ஒழுங்கமைக்கவும்.';
 
   @override
   String get introductionTwoText => 'மேம்பட்ட பயன்பாட்டு தொடர்பு.';
@@ -70,8 +67,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get birthdayText => 'பிறந்தநாள்';
 
   @override
-  String get iAgreeToAllTermsText =>
-      'நான் அனைத்து விதிமுறைகளையும் ஏற்றுக்கொள்கிறேன்';
+  String get iAgreeToAllTermsText => 'நான் அனைத்து விதிமுறைகளையும் ஏற்றுக்கொள்கிறேன்';
 
   @override
   String get fullNameText => 'முழு பெயர்';
@@ -83,8 +79,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get emailOrUsernameText => 'மின்னஞ்சல் / பயனர்பெயர்';
 
   @override
-  String get iAgreeToReceiveNewslettersText =>
-      'செய்திமடல்களைப் பெற நான் ஒப்புக்கொள்கிறேன்';
+  String get iAgreeToReceiveNewslettersText => 'செய்திமடல்களைப் பெற நான் ஒப்புக்கொள்கிறேன்';
 
   @override
   String get subscribeText => 'சந்தா';
@@ -147,8 +142,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get noNotificationFoundText => 'அறிவிப்பு எதுவும் இல்லை';
 
   @override
-  String get notificationSubTitleText =>
-      'எங்களுக்கு எந்த அறிவிப்பும் கிடைக்கவில்லை';
+  String get notificationSubTitleText => 'எங்களுக்கு எந்த அறிவிப்பும் கிடைக்கவில்லை';
 
   @override
   String get notificationSubTitle2Text => 'ஆராய்வோம்';
@@ -259,8 +253,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get leaveReject => 'விடுப்பு நிராகரிப்பு';
 
   @override
-  String get scannText =>
-      'QR குறியீட்டை சதுரத்தின் மையத்தில் வைக்கவும். அது தானாகவே ஸ்கேன் செய்யப்படும்.';
+  String get scannText => 'QR குறியீட்டை சதுரத்தின் மையத்தில் வைக்கவும். அது தானாகவே ஸ்கேன் செய்யப்படும்.';
 
   @override
   String get salarySlips => 'சம்பள சீட்டுகள்';
@@ -272,8 +265,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get salarySlipLabel => 'சம்பள சீட்டு';
 
   @override
-  String get htmlPreviewNotWired =>
-      'HTML மாதிரிக்காட்சி இன்னும் இணைக்கப்படவில்லை';
+  String get htmlPreviewNotWired => 'HTML மாதிரிக்காட்சி இன்னும் இணைக்கப்படவில்லை';
 
   @override
   String get thisMonthLabel => 'இந்த மாதம்';
@@ -294,8 +286,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get ssoLogin => 'SSO உள்நுழைவு';
 
   @override
-  String get profilePictureUpdated =>
-      'சுயவிவரப் படம் வெற்றிகரமாகப் புதுப்பிக்கப்பட்டது';
+  String get profilePictureUpdated => 'சுயவிவரப் படம் வெற்றிகரமாகப் புதுப்பிக்கப்பட்டது';
 
   @override
   String get failedToUpdatePicture => 'படத்தைப் புதுப்பிக்க முடியவில்லை';
@@ -349,8 +340,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get alternative => 'மாற்று';
 
   @override
-  String get fromToDescription =>
-      'தொடக்க மற்றும் இறுதி தேதிகளைத் தேர்ந்தெடுக்கவும்';
+  String get fromToDescription => 'தொடக்க மற்றும் இறுதி தேதிகளைத் தேர்ந்தெடுக்கவும்';
 
   @override
   String get leaveBalanceTitle => 'விடுப்பு நிலுவைகள்';
@@ -392,17 +382,16 @@ class AppLocalizationsTa extends AppLocalizations {
   String get overHeader => 'கூடுதல்';
 
   @override
-  String get allowanceDeductions => 'கொடுப்பனவுகள் மற்றும் கழிவுகள்';
+  String get allowanceDeductions => 'கொடுப்பனவு / கழிவு';
 
   @override
-  String get debtLoans => 'கடன்கள் மற்றும் கடன்கள்';
+  String get debtLoans => 'கடன்கள்';
 
   @override
   String get logoutTitle => 'வெளியேறு';
 
   @override
-  String get logoutConfirmation =>
-      'நீங்கள் நிச்சயமாக வெளியேற விரும்புகிறீர்களா?';
+  String get logoutConfirmation => 'நீங்கள் நிச்சயமாக வெளியேற விரும்புகிறீர்களா?';
 
   @override
   String get cancel => 'ரத்துசெய்';
@@ -441,12 +430,10 @@ class AppLocalizationsTa extends AppLocalizations {
   String get cannotSelectPastDate => 'கடந்த தேதியைத் தேர்ந்தெடுக்க முடியாது';
 
   @override
-  String get fromDateCannotBeAfterTo =>
-      'தொடக்க தேதி இறுதி தேதிக்கு பிறகு இருக்க முடியாது';
+  String get fromDateCannotBeAfterTo => 'தொடக்க தேதி இறுதி தேதிக்கு பிறகு இருக்க முடியாது';
 
   @override
-  String get toDateMustBeAfterFrom =>
-      'இறுதி தேதி தொடக்க தேதிக்கு பிறகு இருக்க வேண்டும்';
+  String get toDateMustBeAfterFrom => 'இறுதி தேதி தொடக்க தேதிக்கு பிறகு இருக்க வேண்டும்';
 
   @override
   String get noteLabel => 'குறிப்பு';
@@ -479,7 +466,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get pendingLabel => 'நிலுவை';
 
   @override
-  String get retryLabel => 'மீண்டும் முயற்சிக்கவும்';
+  String get retryLabel => 'மீண்டும்';
 
   @override
   String get debtsLabel => 'கடன்கள்';
@@ -497,12 +484,10 @@ class AppLocalizationsTa extends AppLocalizations {
   String get collectedLabel => 'சேகரிக்கப்பட்டது';
 
   @override
-  String get scanSiteCheckIn =>
-      'வருகையை இயக்க தளத்தின் QR குறியீட்டை ஸ்கேன் செய்யவும்';
+  String get scanSiteCheckIn => 'வருகையை இயக்க தளத்தின் QR குறியீட்டை ஸ்கேன் செய்யவும்';
 
   @override
-  String get scanSiteCheckOut =>
-      'வெளியேற தளத்தின் QR குறியீட்டை ஸ்கேன் செய்யவும்';
+  String get scanSiteCheckOut => 'வெளியேற தளத்தின் QR குறியீட்டை ஸ்கேன் செய்யவும்';
 
   @override
   String get qrNoCoordinates => 'QR இல் ஒருங்கிணைப்புகள் இல்லை';
@@ -516,8 +501,7 @@ class AppLocalizationsTa extends AppLocalizations {
   }
 
   @override
-  String get serverDidNotReturnCoordinates =>
-      'சேவையகம் ஒருங்கிணைப்புகளை வழங்கவில்லை';
+  String get serverDidNotReturnCoordinates => 'சேவையகம் ஒருங்கிணைப்புகளை வழங்கவில்லை';
 
   @override
   String get invalidServerCoordinates => 'தவறான சேவையக ஒருங்கிணைப்புகள்';
@@ -536,8 +520,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get noInternetConnection => 'இணைய இணைப்பு இல்லை';
 
   @override
-  String get qrValidatedTapToPunch =>
-      'QR சரிபார்க்கப்பட்டது. 20 வினாடிகளுக்குள் வருகை / வெளியேறு என்பதைத் தட்டவும்.';
+  String get qrValidatedTapToPunch => 'QR சரிபார்க்கப்பட்டது. 20 வினாடிகளுக்குள் வருகை / வெளியேறு என்பதைத் தட்டவும்.';
 
   @override
   String qrValidClickButton(String button) {
@@ -555,8 +538,7 @@ class AppLocalizationsTa extends AppLocalizations {
   }
 
   @override
-  String get qrCoordinatesMismatchMessage =>
-      'இந்த இடத்தில் Check-in/Check-out செய்ய அனுமதி இல்லை.';
+  String get qrCoordinatesMismatchMessage => 'இந்த இடத்தில் Check-in/Check-out செய்ய அனுமதி இல்லை.';
 
   @override
   String get remoteChecking => 'தொலைநிலை பதிவு';
@@ -580,8 +562,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get filedToPerform => 'செயல்பாட்டை நிறைவேற்ற முடியவில்லை';
 
   @override
-  String get activeRemoteCheking =>
-      'தொலைதூர வருகைப் பதிவு இயக்கப்பட்டது. 20 வினாடிகளுக்குள் நுழைய/வெளியேற தட்டவும்.';
+  String get activeRemoteCheking => 'தொலைதூர வருகைப் பதிவு இயக்கப்பட்டது. 20 வினாடிகளுக்குள் நுழைய/வெளியேற தட்டவும்.';
 
   @override
   String get approvedLable => 'அனுமதி';
@@ -605,19 +586,16 @@ class AppLocalizationsTa extends AppLocalizations {
   String get availableBalance => 'மீதமுள்ள விடுப்பு';
 
   @override
-  String get submitRequest => 'கோரிக்கை சமர்ப்பிக்க';
+  String get submitRequest => 'சமர்ப்பி';
 
   @override
-  String get leaveAppliedSuccessfully =>
-      'விடுப்பு விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது';
+  String get leaveAppliedSuccessfully => 'விடுப்பு விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது';
 
   @override
-  String get invalidDetailsPleaseCheckYourForm =>
-      'தவறான விவரங்கள். உங்கள் படிவத்தை சரிபார்க்கவும்.';
+  String get invalidDetailsPleaseCheckYourForm => 'தவறான விவரங்கள். உங்கள் படிவத்தை சரிபார்க்கவும்.';
 
   @override
-  String get failedToSubmitLeave =>
-      'விடுப்பு விண்ணப்பத்தை சமர்ப்பிக்க முடியவில்லை.';
+  String get failedToSubmitLeave => 'விடுப்பு விண்ணப்பத்தை சமர்ப்பிக்க முடியவில்லை.';
 
   @override
   String get generalShift => 'பொது பணி நேரம்';
@@ -650,8 +628,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get myTeam => 'என் குழு';
 
   @override
-  String get serverError =>
-      'இந்தப் பக்கத்தை வழங்க இயலாது. தயவுசெய்து உங்கள் நிறுவனத்தைத் தொடர்புகொள்ளவும்.';
+  String get serverError => 'இந்தப் பக்கத்தை வழங்க இயலாது. தயவுசெய்து உங்கள் நிறுவனத்தைத் தொடர்புகொள்ளவும்.';
 
   @override
   String get rs => 'ரூபாய்.';
@@ -788,12 +765,10 @@ class AppLocalizationsTa extends AppLocalizations {
   String get closed => 'மூடப்பட்டுள்ளது';
 
   @override
-  String get loginFailed =>
-      'உள்நுழைய முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.';
+  String get loginFailed => 'உள்நுழைய முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.';
 
   @override
-  String get ssoFailed =>
-      'SSO உள்நுழைவு தோல்வியடைந்தது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.';
+  String get ssoFailed => 'SSO உள்நுழைவு தோல்வியடைந்தது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.';
 
   @override
   String get locationAccuracyTitle => 'இருப்பிடத் துல்லியம்';
@@ -1002,8 +977,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get notificationNoNotificationsYet => 'இன்னும் அறிவிப்புகள் இல்லை';
 
   @override
-  String get notificationAllCaughtUp =>
-      'நீங்கள் அனைத்தையும் பார்த்துள்ளீர்கள்!';
+  String get notificationAllCaughtUp => 'நீங்கள் அனைத்தையும் பார்த்துள்ளீர்கள்!';
 
   @override
   String get notificationMessageLabel => 'செய்தி';
@@ -1058,8 +1032,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get appUpdateRequiredTitle => 'பயன்பாட்டை புதுப்பிக்க வேண்டும்';
 
   @override
-  String get appUpdateRequiredMessage =>
-      'தொடர, தயவுசெய்து உங்கள் பயன்பாட்டை புதிய பதிப்பிற்கு புதுப்பிக்கவும்.';
+  String get appUpdateRequiredMessage => 'தொடர, தயவுசெய்து உங்கள் பயன்பாட்டை புதிய பதிப்பிற்கு புதுப்பிக்கவும்.';
 
   @override
   String get appUpdateRequiredButton => 'இப்போதே புதுப்பிக்கவும்';
@@ -1096,19 +1069,16 @@ class AppLocalizationsTa extends AppLocalizations {
   String get deleteAccountConfirmationTitle => 'கணக்கு நீக்கல் கோரிக்கை';
 
   @override
-  String get deleteAccountConfirmationMessage =>
-      'உங்கள் கணக்கை நீக்க கோரிக்கை விடுக்க விரும்புகிறீர்களா? இந்த செயல்பாடு உங்கள் நிறுவன நிர்வாகிக்கு கணக்கு நீக்கல் கோரிக்கையை அனுப்பும்.';
+  String get deleteAccountConfirmationMessage => 'உங்கள் கணக்கை நீக்க கோரிக்கை விடுக்க விரும்புகிறீர்களா? இந்த செயல்பாடு உங்கள் நிறுவன நிர்வாகிக்கு கணக்கு நீக்கல் கோரிக்கையை அனுப்பும்.';
 
   @override
   String get confirmDeleteAccount => 'எனது கணக்கை நீக்கு';
 
   @override
-  String get deleteAccountRequestedSuccess =>
-      'கணக்கு நீக்கல் கோரிக்கை வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது.';
+  String get deleteAccountRequestedSuccess => 'கணக்கு நீக்கல் கோரிக்கை வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது.';
 
   @override
-  String get incorrectDateTimeError =>
-      'உங்கள் சாதனத்தின் தேதி மற்றும் நேரம் தவறானது. அதைச் சரிசெய்து மீண்டும் உள்நுழையவும்.';
+  String get incorrectDateTimeError => 'உங்கள் சாதனத்தின் தேதி மற்றும் நேரம் தவறானது. அதைச் சரிசெய்து மீண்டும் உள்நுழையவும்.';
 
   @override
   String get timeHeader => 'நேரம்';
@@ -1132,8 +1102,7 @@ class AppLocalizationsTa extends AppLocalizations {
   String get qrLabel => 'QR';
 
   @override
-  String get failedToConnectToServer =>
-      'சேவையகத்துடன் இணைக்க முடியவில்லை. உங்கள் இணைய இணைப்பைச் சரிபார்க்கவும்.';
+  String get failedToConnectToServer => 'சேவையகத்துடன் இணைக்க முடியவில்லை. உங்கள் இணைய இணைப்பைச் சரிபார்க்கவும்.';
 
   @override
   String get myAttendance => 'எனது வருகை';
@@ -1175,20 +1144,16 @@ class AppLocalizationsTa extends AppLocalizations {
   String get familyFunction => 'குடும்ப விழா';
 
   @override
-  String get pleaseSelectLeaveType =>
-      'தயவுசெய்து விடுப்பு வகையைத் தேர்ந்தெடுக்கவும்';
+  String get pleaseSelectLeaveType => 'தயவுசெய்து விடுப்பு வகையைத் தேர்ந்தெடுக்கவும்';
 
   @override
-  String get pleaseSelectFromDate =>
-      'தயவுசெய்து தொடக்க தேதியைத் தேர்ந்தெடுக்கவும்';
+  String get pleaseSelectFromDate => 'தயவுசெய்து தொடக்க தேதியைத் தேர்ந்தெடுக்கவும்';
 
   @override
-  String get pleaseSelectToDate =>
-      'தயவுசெய்து முடிவு தேதியைத் தேர்ந்தெடுக்கவும்';
+  String get pleaseSelectToDate => 'தயவுசெய்து முடிவு தேதியைத் தேர்ந்தெடுக்கவும்';
 
   @override
-  String get pleaseSelectLeaveReason =>
-      'தயவுசெய்து விடுப்புக்கான காரணத்தைத் தேர்ந்தெடுக்கவும்';
+  String get pleaseSelectLeaveReason => 'தயவுசெய்து விடுப்புக்கான காரணத்தைத் தேர்ந்தெடுக்கவும்';
 
   @override
   String get halfDayMorning => ' (0.5 நாள் - காலை)';
@@ -1203,16 +1168,13 @@ class AppLocalizationsTa extends AppLocalizations {
   String get totalLabel => 'மொத்தம்';
 
   @override
-  String get failedToRetrieveCoordinatesCheckInOutEnabled =>
-      'தள ஒருங்கிணைப்புகளைப் பெற முடியவில்லை. உள்நாட்டில் செக்-இன்/செக்-அவுட் இயக்கப்பட்டது.';
+  String get failedToRetrieveCoordinatesCheckInOutEnabled => 'தள ஒருங்கிணைப்புகளைப் பெற முடியவில்லை. உள்நாட்டில் செக்-இன்/செக்-அவுட் இயக்கப்பட்டது.';
 
   @override
-  String get savedLocallyWillSyncWhenOnline =>
-      'உள்நாட்டில் சேமிக்கப்பட்டது, ஆன்லைனில் இருக்கும்போது ஒத்திசைக்கப்படும்';
+  String get savedLocallyWillSyncWhenOnline => 'உள்நாட்டில் சேமிக்கப்பட்டது, ஆன்லைனில் இருக்கும்போது ஒத்திசைக்கப்படும்';
 
   @override
-  String get serverErrorSavedLocallyWillSyncLater =>
-      'சேவையக பிழை. உள்நாட்டில் சேமிக்கப்பட்டது, பின்னர் ஒத்திசைக்கப்படும்.';
+  String get serverErrorSavedLocallyWillSyncLater => 'சேவையக பிழை. உள்நாட்டில் சேமிக்கப்பட்டது, பின்னர் ஒத்திசைக்கப்படும்.';
 
   @override
   String syncedCountFailedCount(Object success, Object failed) {
@@ -1220,18 +1182,59 @@ class AppLocalizationsTa extends AppLocalizations {
   }
 
   @override
-  String get todoDirectManagerApprovalRequired =>
-      'இந்தக் கோரிக்கையை ஒப்புறுதி செய்ய நீங்கள் அந்தப் பணியாளரின் நேரடி மேலாளராக இருக்க வேண்டும்.';
+  String get todoDirectManagerApprovalRequired => 'இந்தக் கோரிக்கையை ஒப்புறுதி செய்ய நீங்கள் அந்தப் பணியாளரின் நேரடி மேலாளராக இருக்க வேண்டும்.';
 
   @override
-  String get developerModeDetectedError =>
-      'Developer Options இயக்கப்பட்டுள்ளது. பயன்பாட்டைப் பயன்படுத்த அமைப்புகளில் அதை முடக்கி மீண்டும் உள்நுழையவும்.';
+  String get developerModeDetectedError => 'Developer Options இயக்கப்பட்டுள்ளது. பயன்பாட்டைப் பயன்படுத்த அமைப்புகளில் அதை முடக்கி மீண்டும் உள்நுழையவும்.';
 
   @override
-  String get mockLocationDetectedError =>
-      'போலி இருப்பிடம் (Mock Location) கண்டறியப்பட்டது. தயவுசெய்து அதை முடக்கி மீண்டும் உள்நுழையவும்.';
+  String get mockLocationDetectedError => 'போலி இருப்பிடம் (Mock Location) கண்டறியப்பட்டது. தயவுசெய்து அதை முடக்கி மீண்டும் உள்நுழையவும்.';
 
   @override
-  String get autoTimeRequiredError =>
-      'தானியங்கி தேதி மற்றும் நேரம் (Automatic Date & Time) முடக்கப்பட்டுள்ளது. அமைப்புகளில் அதை இயக்கி மீண்டும் உள்நுழையவும்.';
+  String get autoTimeRequiredError => 'தானியங்கி தேதி மற்றும் நேரம் (Automatic Date & Time) முடக்கப்பட்டுள்ளது. அமைப்புகளில் அதை இயக்கி மீண்டும் உள்நுழையவும்.';
+
+  @override
+  String get approveAction => 'அனுமதி';
+
+  @override
+  String get rejectAction => 'நிராகரி';
+
+  @override
+  String get approveLeave => 'விடுப்பை அனுமதி';
+
+  @override
+  String get rejectLeave => 'விடுப்பை நிராகரி';
+
+  @override
+  String get selectAction => 'செயலைத் தேர்ந்தெடுக்கவும்';
+
+  @override
+  String get tryAgain => 'மீண்டும் முயற்சிக்கவும்';
+
+  @override
+  String get openSettings => 'அமைப்புகளைத் திற';
+
+  @override
+  String get locationSettings => 'இருப்பிட அமைப்புகள்';
+
+  @override
+  String get youAreOnline => 'நீங்கள் ஆன்லைனில் உள்ளீர்கள்';
+
+  @override
+  String get youAreOffline => 'நீங்கள் ஆஃப்லைனில் உள்ளீர்கள்';
+
+  @override
+  String get userDetails => 'பயனர் விவரங்கள்';
+
+  @override
+  String get selectTeam => 'குழுவைத் தேர்ந்தெடுக்கவும்';
+
+  @override
+  String get resetLabel => 'மீட்டமை';
+
+  @override
+  String get enterSixDigitOtp => '6 இலக்க OTP ஐ உள்ளிடவும்';
+
+  @override
+  String get otpResentSuccess => 'OTP மீண்டும் வெற்றிகரமாக அனுப்பப்பட்டது!';
 }
