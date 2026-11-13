@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 
 import 'package:cn_pocket_hr/services/security_service.dart';
 import 'package:cn_pocket_hr/services/secure_token_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class MobileSplash extends StatefulWidget {
   const MobileSplash({Key? key}) : super(key: key);
@@ -175,40 +176,71 @@ class _MobileSplashState extends State<MobileSplash>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async => true,
-   child: Scaffold(
-  backgroundColor: HRColors.splashred,
-  body: Container(
-    color: HRColors.splashred,
-    alignment: Alignment.center,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FadeTransition(
-          opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: Image.asset(
-              FlavorConfig.instance.splashLogoAsset,
-              width: 192.0,
-              fit: BoxFit.contain,
-            ),
+      child: Scaffold(
+        backgroundColor: HRColors.splashred,
+        body: Container(
+          color: HRColors.splashred,
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Image.asset(
+                          FlavorConfig.instance.splashLogoAsset,
+                          width: 192.0,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    if (_statusText.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        _statusText,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Positioned(
+                bottom: 20 + MediaQuery.of(context).padding.bottom,
+                left: 16,
+                right: 16,
+                child: FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const SizedBox.shrink();
+                    final info = snapshot.data!;
+                    final label = info.buildNumber.isNotEmpty
+                        ? 'v${info.version} (Build ${info.buildNumber})'
+                        : 'v${info.version}';
+                    return Center(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.75),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
-        if (_statusText.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(
-            _statusText,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ],
-    ),
-  ),
-),
+      ),
     );
   }
 }

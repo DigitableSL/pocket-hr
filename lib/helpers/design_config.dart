@@ -593,14 +593,11 @@ class DesignConfig {
                   FutureBuilder<PackageInfo>(
                     future: PackageInfo.fromPlatform(),
                     builder: (context, snapshot) {
-                      String version = "1.0.0";
-                      if (snapshot.hasData) {
-                        version = snapshot.data!.version;
-                        if (snapshot.data!.buildNumber.isNotEmpty) {
-                          version =
-                              "${snapshot.data!.version}+${snapshot.data!.buildNumber}";
-                        }
-                      }
+                      if (!snapshot.hasData) return const SizedBox.shrink();
+                      final info = snapshot.data!;
+                      final version = info.buildNumber.isNotEmpty
+                          ? "${info.version} (Build ${info.buildNumber})"
+                          : info.version;
                       return Center(
                         child: AutoSizeText(
                           'App Version $version',

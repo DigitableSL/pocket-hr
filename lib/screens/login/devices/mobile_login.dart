@@ -121,7 +121,9 @@ class _MobileLoginState extends State<MobileLogin>
       final info = await PackageInfo.fromPlatform();
       if (mounted)
         setState(() {
-          _appVersion = 'v${info.version}';
+          _appVersion = info.buildNumber.isNotEmpty
+              ? 'v${info.version} (Build ${info.buildNumber})'
+              : 'v${info.version}';
           _appName = FlavorConfig.instance.appName;
         });
     } catch (_) {
