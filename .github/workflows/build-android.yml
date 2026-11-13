@@ -5,6 +5,11 @@ on:
     branches:
       - domex
       - human-v2
+    tags:
+      - 'release-domex-v*'
+      - 'release-malkey-v*'
+      - 'release-mahajana-v*'
+      - 'release-digitable-v*'
   workflow_dispatch:
     inputs:
       tenant:
@@ -76,6 +81,17 @@ jobs:
             FORMAT="${{ github.event.inputs.build_format }}"
             DEPLOY="${{ github.event.inputs.deploy_to_play_store }}"
             TRACK="${{ github.event.inputs.play_store_track }}"
+          elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            # Expected tag format: release-<tenant>-v<version> (optional -prod suffix)
+            TENANT=$(echo "$TAG" | sed -E 's/^release-([a-z]+)-v.*/\1/')
+            FORMAT="appbundle"
+            DEPLOY="true"
+            if [[ "$TAG" == *-prod ]]; then
+              TRACK="production"
+            else
+              TRACK="internal"
+            fi
           else
             TENANT="domex"
             FORMAT="apk"
@@ -86,6 +102,15 @@ jobs:
           # If deploying to Play Store, ensure appbundle is built
           if [ "$DEPLOY" = "true" ] && [ "$FORMAT" = "apk" ]; then
             FORMAT="both"
+          fi
+
+          # Use pubspec.yaml +buildNumber for Play Store releases; github.run_number for regular test builds
+          BUILD_NUMBER="${{ github.run_number }}"
+          if [ "$DEPLOY" = "true" ]; then
+            PUBSPEC_BUILD=$(grep -E '^version:' pubspec.yaml | head -n1 | sed -n 's/.*+\([0-9][0-9]*\).*/\1/p')
+            if [ -n "$PUBSPEC_BUILD" ]; then
+              BUILD_NUMBER="$PUBSPEC_BUILD"
+            fi
           fi
 
           case "$TENANT" in
@@ -112,6 +137,7 @@ jobs:
           echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
           echo "track=$TRACK" >> $GITHUB_OUTPUT
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
 
       - name: Configure Android Release Signing (if secrets provided)
         env:
@@ -146,7 +172,7 @@ jobs:
             --flavor ${{ steps.config.outputs.tenant }} \
             -t ${{ steps.config.outputs.target }} \
             --dart-define=tenant=${{ steps.config.outputs.tenant }} \
-            --build-number=${{ github.run_number }}
+            --build-number=${{ steps.config.outputs.build_number }}
 
       - name: Upload APK Artifact (arm64-v8a)
         if: steps.config.outputs.format == 'apk' || steps.config.outputs.format == 'both'
@@ -165,7 +191,7 @@ jobs:
             --flavor ${{ steps.config.outputs.tenant }} \
             -t ${{ steps.config.outputs.target }} \
             --dart-define=tenant=${{ steps.config.outputs.tenant }} \
-            --build-number=${{ github.run_number }}
+            --build-number=${{ steps.config.outputs.build_number }}
 
       - name: Upload AAB Artifact
         if: steps.config.outputs.format == 'appbundle' || steps.config.outputs.format == 'both'
@@ -174,6 +200,21 @@ jobs:
           name: aab-${{ steps.config.outputs.tenant }}-release-b${{ github.run_number }}
           path: build/app/outputs/bundle/${{ steps.config.outputs.tenant }}Release/app-${{ steps.config.outputs.tenant }}-release.aab
           if-no-files-found: error
+
+      - name: Verify Play Store Release Secrets
+        if: steps.config.outputs.deploy == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PLAY_JSON: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing. Play Store rejects debug-signed AABs."
+            exit 1
+          fi
+          if [ -z "$PLAY_JSON" ]; then
+            echo "::error::PLAY_STORE_SERVICE_ACCOUNT_JSON secret is missing."
+            exit 1
+          fi
 
       - name: Deploy AAB to Google Play Console
         if: steps.config.outputs.deploy == 'true'
