@@ -242,6 +242,6 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ needs.prepare.outputs.package_name }}
           releaseFiles: build/app/outputs/bundle/${{ needs.prepare.outputs.tenant }}Release/app-${{ needs.prepare.outputs.tenant }}-release.aab
-          track: ${{ needs.prepare.outputs.track }}
+          tracks: ${{ needs.prepare.outputs.track }}
           status: completed
 
