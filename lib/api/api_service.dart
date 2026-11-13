@@ -20,6 +20,7 @@ import 'package:cn_pocket_hr/services/device_details_service.dart';
 import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/api/api_client.dart';
 import 'package:cn_pocket_hr/services/secure_token_service.dart';
+import 'package:cn_pocket_hr/services/token_refresh_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:cn_pocket_hr/helpers/app_update_helper.dart';
 
@@ -1172,21 +1173,8 @@ class APIService {
     showToast("Sorry, cannot access this app. Please log in again.");
   }
 
-  Map<String, dynamic>? _decodeJwtPayload(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length < 2) return null;
-      final payload = parts[1];
-      final normalized = base64.normalize(payload);
-      final decoded = utf8.decode(base64Url.decode(normalized));
-      final obj = jsonDecode(decoded);
-      if (obj is Map<String, dynamic>) return obj;
-      if (obj is Map) return Map<String, dynamic>.from(obj);
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
+  Map<String, dynamic>? _decodeJwtPayload(String token) =>
+      TokenRefreshService.decodeJwtPayload(token);
 
   Future<void> _injectTenantToBody(Map<String, String> body) async {
     try {
@@ -1265,145 +1253,24 @@ class APIService {
     }
   }
 
-  bool _isJwtExpired(String token) {
-    try {
-      final payload = _decodeJwtPayload(token);
-      if (payload == null) return true;
-      final expAny =
-          payload['exp'] ?? payload['expiry'] ?? payload['expires_at'];
-      if (expAny == null) return true;
-      int expSec;
-      if (expAny is int)
-        expSec = expAny;
-      else if (expAny is double)
-        expSec = expAny.toInt();
-      else
-        expSec = int.tryParse(expAny.toString()) ?? 0;
-      if (expSec <= 0) return true;
-      final nowSec = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
-      return expSec <= nowSec;
-    } catch (_) {
-      return true;
-    }
-  }
-
   Future<bool> hasValidAccessToken() async {
-    try {
-      await storage.ready;
-      final token = await SecureTokenService.getAccessToken();
-      if (token.isEmpty) return false;
-      if (!_isJwtExpired(token)) return true;
-      // Token is expired — try a silent refresh before declaring invalid.
-      return await _refreshAccessToken();
-    } catch (_) {
-      return false;
-    }
+    await storage.ready;
+    return TokenRefreshService.hasValidAccessToken();
   }
 
   // ── Token-refresh machinery ──────────────────────────────────────────────
 
-  bool _isRefreshing = false;
-  Completer<bool>? _refreshCompleter;
-
   /// Silently exchanges the stored refresh_token for a new access_token.
-  /// Returns true when new tokens have been persisted, false otherwise.
-  Future<bool> _refreshAccessToken() async {
-    // Serialise concurrent refresh attempts — let the first one run and
-    // return its result to everyone else waiting.
-    if (_isRefreshing) {
-      return _refreshCompleter?.future ?? Future.value(false);
-    }
-    _isRefreshing = true;
-    _refreshCompleter = Completer<bool>();
+  /// Serialised process-wide via [TokenRefreshService].
+  Future<bool> _refreshAccessToken() =>
+      TokenRefreshService.refreshAccessToken();
 
-    try {
-      await storage.ready;
-
-      // --- Retrieve refresh token from encrypted storage
-      final refreshToken = await SecureTokenService.getRefreshToken();
-      if (refreshToken.isEmpty) {
-        debugPrint('[TokenRefresh] No refresh_token — cannot refresh.');
-        _refreshCompleter!.complete(false);
-        return false;
-      }
-
-      // --- Extract client_id from the current access token JWT payload
-      String clientId = '';
-      final currentToken = await SecureTokenService.getAccessToken();
-      if (currentToken.isNotEmpty) {
-        clientId =
-            _decodeJwtPayload(currentToken)?['client_id']?.toString() ?? '';
-      }
-      if (clientId.isEmpty) {
-        debugPrint('[TokenRefresh] No client_id in JWT — cannot refresh.');
-        _refreshCompleter!.complete(false);
-        return false;
-      }
-
-      debugPrint('[TokenRefresh] Refreshing access token...');
-      final res = await http
-          .post(
-            Uri.parse('https://accounts.go.digitable.io/token'),
-            headers: const {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'grant_type': 'refresh_token',
-              'refresh_token': refreshToken,
-              'client_id': clientId,
-            }),
-          )
-          .timeout(const Duration(seconds: 8));
-
-      debugPrint('[TokenRefresh] status=${res.statusCode}');
-
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        debugPrint('[TokenRefresh] Failed: ${res.body}');
-        _refreshCompleter!.complete(false);
-        return false;
-      }
-
-      final data = jsonDecode(res.body);
-      final newAccess = data['access_token']?.toString() ?? '';
-      final newRefresh = data['refresh_token']?.toString() ?? refreshToken;
-
-      if (newAccess.isEmpty) {
-        debugPrint('[TokenRefresh] Response missing access_token.');
-        _refreshCompleter!.complete(false);
-        return false;
-      }
-
-      // --- Persist both tokens exclusively in encrypted storage
-      await SecureTokenService.saveTokens(
-        accessToken: newAccess,
-        refreshToken: newRefresh,
-      );
-
-      debugPrint('[TokenRefresh] Tokens refreshed and stored securely.');
-      _refreshCompleter!.complete(true);
-      return true;
-    } catch (e) {
-      debugPrint('[TokenRefresh] Exception: $e');
-      _refreshCompleter?.complete(false);
-      return false;
-    } finally {
-      _isRefreshing = false;
-      _refreshCompleter = null;
-    }
-  }
-
-  /// Ensures a non-expired access token is available.  Silently refreshes
-  /// using the refresh token when the current token has expired.
-  /// Returns true when a valid (or freshly refreshed) token exists.
+  /// Ensures a non-expired access token is available. Silently refreshes
+  /// using the refresh token when the current token has expired or is
+  /// within the expiry skew window.
   Future<bool> _ensureValidToken() async {
-    try {
-      await storage.ready;
-      final token = await SecureTokenService.getAccessToken();
-      if (token.isEmpty) return false;
-      if (!_isJwtExpired(token)) return true;
-      debugPrint('[TokenRefresh] Token expired — refreshing proactively...');
-      return await _refreshAccessToken();
-    } catch (_) {
-      return false;
-    }
+    await storage.ready;
+    return TokenRefreshService.ensureValidToken();
   }
 
   // ── End token-refresh machinery ─────────────────────────────────────────

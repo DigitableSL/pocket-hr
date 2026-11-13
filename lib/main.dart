@@ -327,35 +327,51 @@ class PocketHR extends StatelessWidget {
                 child: Stack(
                   children: [
                     if (widget != null) widget,
+                    if (!conn.isOnline && !conn.showBanner)
+                      Positioned(
+                        top: mediaQuery.padding.top,
+                        left: 0,
+                        right: 0,
+                        child: IgnorePointer(
+                          child: Container(
+                            height: 3.5,
+                            color: const Color(0xFFD32F2F),
+                          ),
+                        ),
+                      ),
                     if (conn.showBanner)
                       Positioned(
                         top: mediaQuery.padding.top,
                         left: 0,
                         right: 0,
                         child: Material(
-                          color: conn.isOnline ? Colors.green : Colors.red,
-                          elevation: 6,
-                          child: Container(
-                            width: 12,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                          color: conn.isOnline
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFFD32F2F),
+                          elevation: 4,
+                          child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 vertical: 6, horizontal: 12),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                Icon(
+                                  conn.isOnline
+                                      ? Icons.cloud_done_outlined
+                                      : Icons.cloud_off_outlined,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
                                 AutoSizeText(
                                   conn.isOnline
-                                      ? (conn.isWifi
-                                          ? 'Connected Wi-Fi'
-                                          : (conn.isMobile
-                                              ? 'Connected  Mobile Data'
-                                              : 'Connected'))
-                                      : AppLocalizations.of(context)!
-                                          .noInternetConnection,
+                                      ? 'You are online'
+                                      : 'You are offline',
                                   style: const TextStyle(
-                                      color: Colors.white, fontSize: 16),
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
