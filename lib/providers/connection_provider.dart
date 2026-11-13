@@ -35,8 +35,8 @@ class ConnectionProvider extends ChangeNotifier {
       _lastResult = _toConnectivityResult(raw);
       notifyListeners();
       
-      // Check internet access asynchronously
-      _runInternetCheck(_currentCheckId);
+      // Check internet access asynchronously without flashing online banner on cold start
+      _runInternetCheck(_currentCheckId, isInitial: true);
     } catch (_) {
       _isOnline = true;
       notifyListeners();
@@ -60,8 +60,7 @@ class ConnectionProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> _runInternetCheck(int checkId) async {
-    final oldOnline = _isOnline;
+  Future<void> _runInternetCheck(int checkId, {bool isInitial = false}) async {
     final nowOnline = await _checkInternetAccess();
 
     // Ignore if this is a stale check
@@ -74,7 +73,9 @@ class ConnectionProvider extends ChangeNotifier {
       debugPrint('[ConnectionProvider] normalized=$_lastResult online=$_isOnline');
     } catch (_) {}
 
-    _showTransientBanner();
+    if (!isInitial || !_isOnline) {
+      _showTransientBanner();
+    }
 
     if (_isOnline) {
       unawaited(() async {
@@ -87,7 +88,7 @@ class ConnectionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _showTransientBanner({Duration duration = const Duration(seconds: 10)}) {
+  void _showTransientBanner({Duration duration = const Duration(seconds: 3)}) {
     try {
       _bannerTimer?.cancel();
     } catch (_) {}

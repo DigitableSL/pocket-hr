@@ -674,7 +674,9 @@ class APIService {
       };
       if (tenant.isNotEmpty) headers['Tenant'] = tenant;
 
-      var response = await http.get(uri, headers: headers);
+      var response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 8));
 
       // If 401 here, try refreshing once and retry.
       if (response.statusCode == 401) {
@@ -682,7 +684,9 @@ class APIService {
         if (refreshed) {
           accessToken = SecureTokenService.getAccessTokenSync();
           headers['Authorization'] = 'Bearer $accessToken';
-          response = await http.get(uri, headers: headers);
+          response = await http
+              .get(uri, headers: headers)
+              .timeout(const Duration(seconds: 8));
         }
       }
 
@@ -1337,15 +1341,17 @@ class APIService {
       }
 
       debugPrint('[TokenRefresh] Refreshing access token...');
-      final res = await http.post(
-        Uri.parse('https://accounts.go.digitable.io/token'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'grant_type': 'refresh_token',
-          'refresh_token': refreshToken,
-          'client_id': clientId,
-        }),
-      );
+      final res = await http
+          .post(
+            Uri.parse('https://accounts.go.digitable.io/token'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'grant_type': 'refresh_token',
+              'refresh_token': refreshToken,
+              'client_id': clientId,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       debugPrint('[TokenRefresh] status=${res.statusCode}');
 

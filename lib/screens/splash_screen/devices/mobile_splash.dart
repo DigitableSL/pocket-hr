@@ -26,9 +26,10 @@ class _MobileSplashState extends State<MobileSplash>
     with TickerProviderStateMixin {
   LocalStorage storage = LocalStorage('pocketHR');
   APIService apiService = APIService();
+  String _statusText = '';
 
   late final AnimationController _controller = AnimationController(
-    duration: const Duration(milliseconds: 5000),
+    duration: const Duration(milliseconds: 1400),
     vsync: this,
   )..forward();
 
@@ -45,7 +46,7 @@ class _MobileSplashState extends State<MobileSplash>
     end: 1.0,
   ).animate(CurvedAnimation(
     parent: _controller,
-    curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
+    curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
   ));
 
   @override
@@ -61,9 +62,15 @@ class _MobileSplashState extends State<MobileSplash>
     super.dispose();
   }
 
+  void _setStatus(String msg) {
+    if (mounted) {
+      setState(() => _statusText = msg);
+    }
+  }
+
   startTime() async {
-    var _duration = Duration(milliseconds: 5000);
-    return Timer(_duration, navigationPage);
+    const duration = Duration(milliseconds: 1400);
+    return Timer(duration, navigationPage);
   }
 
   var email = null;
@@ -73,37 +80,64 @@ class _MobileSplashState extends State<MobileSplash>
   var saveLang = null;
 
   navigationPage() async {
-    await storage.ready;
-    await SecureTokenService.ensureInitialized();
-    saveLang = storage.getItem('lang');
-    setLanguage(saveLang);
-
-    // Check developer mode, auto date/time, and mock location before doing anything else
-    if (!mounted) return;
-    final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
-    if (!isSecure) return;
-
-    // Require location service & permission before initiating any API or background services
-    if (!mounted) return;
-    final granted = await showLocationPermissionDialog(context);
-    if (granted != true) return;
-
-    // Require both saved tenant + access token
-    final savedTenant = (storage.getItem('tenant') ?? '').toString();
-    final hasSavedTenant = savedTenant.trim().isNotEmpty;
-
-    // Try auto-login via valid access token
     try {
-      final hasToken = await apiService.hasValidAccessToken();
-      if (hasSavedTenant && hasToken) {
-        final me = await apiService.fetchMeProfileWithBearer();
-        if (me != null) {
+      await storage.ready;
+      await SecureTokenService.ensureInitialized();
+      saveLang = storage.getItem('lang');
+      setLanguage(saveLang);
+
+      // Check developer mode, auto date/time, and mock location before doing anything else
+      _setStatus('Checking device security...');
+      if (!mounted) return;
+      final isSecure = await SecurityService.verifyDeviceSecurity(context: context);
+      if (!isSecure) return;
+
+      // Require location service & permission before initiating any API or background services
+      _setStatus('Checking location permission...');
+      if (!mounted) return;
+      final granted = await showLocationPermissionDialog(context);
+      if (granted != true) return;
+
+      // Require both saved tenant + access token
+      final savedTenant = (storage.getItem('tenant') ?? '').toString();
+      final hasSavedTenant = savedTenant.trim().isNotEmpty;
+
+      if (hasSavedTenant) {
+        _setStatus('Verifying session...');
+        bool hasToken = false;
+        try {
+          hasToken = await apiService
+              .hasValidAccessToken()
+              .timeout(const Duration(seconds: 9));
+        } catch (_) {}
+
+        final hasCachedProfile = storage.getItem('me_profile') != null;
+        final refreshToken = await SecureTokenService.getRefreshToken();
+
+        if (hasToken) {
+          _setStatus('Loading profile...');
+          Map<String, dynamic>? me;
+          try {
+            me = await apiService
+                .fetchMeProfileWithBearer()
+                .timeout(const Duration(seconds: 9));
+          } catch (_) {}
+
+          if (me != null || hasCachedProfile) {
+            if (!mounted) return;
+            Navigator.pushNamed(context, HRMain.routeName);
+            return;
+          }
+        } else if (hasCachedProfile && refreshToken.isNotEmpty) {
+          // Offline or slow network at startup: allow entry with cached profile
           if (!mounted) return;
           Navigator.pushNamed(context, HRMain.routeName);
           return;
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[SPLASH] navigationPage error: $e');
+    }
 
     // Default -> login screen
     try {
@@ -146,16 +180,32 @@ class _MobileSplashState extends State<MobileSplash>
   body: Container(
     color: HRColors.splashred,
     alignment: Alignment.center,
-    child: FadeTransition(
-      opacity: _fadeAnimation,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Image.asset(
-          FlavorConfig.instance.splashLogoAsset,
-          width: 192.0,
-          fit: BoxFit.contain,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Image.asset(
+              FlavorConfig.instance.splashLogoAsset,
+              width: 192.0,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
-      ),
+        if (_statusText.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            _statusText,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
     ),
   ),
 ),
