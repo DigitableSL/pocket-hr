@@ -58,6 +58,7 @@ jobs:
       deploy: ${{ steps.config.outputs.deploy }}
       track: ${{ steps.config.outputs.track }}
       package_name: ${{ steps.config.outputs.package_name }}
+      build_name: ${{ steps.config.outputs.build_name }}
       build_number: ${{ steps.config.outputs.build_number }}
     steps:
       - name: Checkout pubspec.yaml
@@ -75,14 +76,31 @@ jobs:
             TRACK="${{ github.event.inputs.play_store_track }}"
           elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
-            # Expected tag format: release-<tenant>-v<version> (optional -prod suffix)
+            # Supported tag formats:
+            #   release-<tenant>-v<version>                  (auto build_number = pubspec + run_number, internal track)
+            #   release-<tenant>-v<version>+<buildNumber>    (explicit build_number, internal track)
+            #   release-<tenant>-v<version>-b<buildNumber>   (explicit build_number, internal track)
+            #   Append -prod to any of the above for production track.
             TENANT=$(echo "$TAG" | sed -E 's/^release-([a-z]+)-v.*/\1/')
             FORMAT="appbundle"
             DEPLOY="true"
             if [[ "$TAG" == *-prod ]]; then
               TRACK="production"
+              TAG_CORE="${TAG%-prod}"
             else
               TRACK="internal"
+              TAG_CORE="$TAG"
+            fi
+            VER_PART="${TAG_CORE#release-${TENANT}-v}"
+            if [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)$ ]]; then
+              BUILD_NAME="${BASH_REMATCH[1]}"
+              TAG_BUILD_NUM="${BASH_REMATCH[2]}"
+            elif [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-b([0-9]+)$ ]]; then
+              BUILD_NAME="${BASH_REMATCH[1]}"
+              TAG_BUILD_NUM="${BASH_REMATCH[2]}"
+            elif [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              BUILD_NAME="${BASH_REMATCH[1]}"
+              TAG_BUILD_NUM=""
             fi
           else
             TENANT="domex"
@@ -96,13 +114,22 @@ jobs:
             FORMAT="both"
           fi
 
-          # Use pubspec.yaml +buildNumber for Play Store releases; github.run_number for regular test builds
-          BUILD_NUMBER="${{ github.run_number }}"
-          if [ "$DEPLOY" = "true" ]; then
-            PUBSPEC_BUILD=$(grep -E '^version:' pubspec.yaml | head -n1 | sed -n 's/.*+\([0-9][0-9]*\).*/\1/p')
-            if [ -n "$PUBSPEC_BUILD" ]; then
-              BUILD_NUMBER="$PUBSPEC_BUILD"
-            fi
+          # Resolve build_name (fallback to pubspec.yaml) and build_number
+          PUBSPEC_LINE=$(grep -E '^version:' pubspec.yaml | head -n1)
+          PUBSPEC_NAME=$(echo "$PUBSPEC_LINE" | sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p')
+          PUBSPEC_BUILD=$(echo "$PUBSPEC_LINE" | sed -n 's/.*+\([0-9][0-9]*\).*/\1/p')
+
+          if [ -z "${BUILD_NAME:-}" ]; then
+            BUILD_NAME="${PUBSPEC_NAME:-1.0.0}"
+          fi
+
+          if [ -n "${TAG_BUILD_NUM:-}" ]; then
+            BUILD_NUMBER="$TAG_BUILD_NUM"
+          elif [ "$DEPLOY" = "true" ]; then
+            BASE_BUILD="${PUBSPEC_BUILD:-0}"
+            BUILD_NUMBER=$((BASE_BUILD + ${{ github.run_number }}))
+          else
+            BUILD_NUMBER="${{ github.run_number }}"
           fi
 
           case "$TENANT" in
@@ -129,6 +156,7 @@ jobs:
           echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
           echo "track=$TRACK" >> $GITHUB_OUTPUT
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "build_name=$BUILD_NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
 
   build-android:
@@ -191,6 +219,7 @@ jobs:
             --flavor ${{ needs.prepare.outputs.tenant }} \
             -t ${{ needs.prepare.outputs.target }} \
             --dart-define=tenant=${{ needs.prepare.outputs.tenant }} \
+            --build-name=${{ needs.prepare.outputs.build_name }} \
             --build-number=${{ needs.prepare.outputs.build_number }}
 
       - name: Upload APK Artifact (arm64-v8a)
@@ -210,6 +239,7 @@ jobs:
             --flavor ${{ needs.prepare.outputs.tenant }} \
             -t ${{ needs.prepare.outputs.target }} \
             --dart-define=tenant=${{ needs.prepare.outputs.tenant }} \
+            --build-name=${{ needs.prepare.outputs.build_name }} \
             --build-number=${{ needs.prepare.outputs.build_number }}
 
       - name: Upload AAB Artifact
