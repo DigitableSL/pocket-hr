@@ -153,9 +153,70 @@ jobs:
           security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-          # 4. Copy provisioning profile to the library directory
+          # 4. Inspect provisioning profile, install by UUID, and configure Manual signing for CI
+          PP_PLIST=$RUNNER_TEMP/profile.plist
+          security cms -D -i "$PP_PATH" > "$PP_PLIST"
+          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" "$PP_PLIST")
+          PP_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" "$PP_PLIST")
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" "$PP_PLIST")
+          APP_ID_FULL=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" "$PP_PLIST")
+          PROFILE_BUNDLE_ID="${APP_ID_FULL#${TEAM_ID}.}"
+          IS_DEV=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:get-task-allow" "$PP_PLIST" 2>/dev/null || echo "false")
+          HAS_DEVICES=$(/usr/libexec/PlistBuddy -c "Print :ProvisionedDevices" "$PP_PLIST" >/dev/null 2>&1 && echo "true" || echo "false")
+
+          if [ "$IS_DEV" = "true" ]; then
+            CERT_IDENTITY="Apple Development"
+            EXPORT_METHOD_PLIST="development"
+          elif [ "$HAS_DEVICES" = "true" ]; then
+            CERT_IDENTITY="Apple Distribution"
+            EXPORT_METHOD_PLIST="ad-hoc"
+          else
+            CERT_IDENTITY="Apple Distribution"
+            EXPORT_METHOD_PLIST="app-store-connect"
+          fi
+
+          echo "Profile Name: $PP_NAME"
+          echo "Profile UUID: $PP_UUID"
+          echo "Team ID: $TEAM_ID"
+          echo "Profile Bundle ID: $PROFILE_BUNDLE_ID"
+          echo "Detected Export Method: $EXPORT_METHOD_PLIST ($CERT_IDENTITY)"
+
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"${PP_UUID}.mobileprovision"
+
+          # Switch Runner target from Automatic to Manual signing on the CI runner
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\";/PROVISIONING_PROFILE_SPECIFIER = \"${PP_NAME}\";/g" ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' "s/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = ${TEAM_ID};/g" ios/Runner.xcodeproj/project.pbxproj
+
+          cat <<EOF >> ios/Flutter/Release.xcconfig
+CODE_SIGN_STYLE=Manual
+DEVELOPMENT_TEAM=${TEAM_ID}
+CODE_SIGN_IDENTITY=${CERT_IDENTITY}
+PROVISIONING_PROFILE_SPECIFIER=${PP_NAME}
+EOF
+
+          cat <<EOF > "$RUNNER_TEMP/ExportOptions.plist"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>${EXPORT_METHOD_PLIST}</string>
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>teamID</key>
+  <string>${TEAM_ID}</string>
+  <key>signingCertificate</key>
+  <string>${CERT_IDENTITY}</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>${PROFILE_BUNDLE_ID}</key>
+    <string>${PP_NAME}</string>
+  </dict>
+</dict>
+</plist>
+EOF
 
       - name: Prepare Tenant iOS Assets and Config
         run: |
@@ -178,7 +239,7 @@ jobs:
             --tree-shake-icons \
             -t ${{ needs.prepare.outputs.target }} \
             --dart-define=tenant=${{ needs.prepare.outputs.tenant }} \
-            --export-method=${{ needs.prepare.outputs.export_method }} \
+            --export-options-plist="$RUNNER_TEMP/ExportOptions.plist" \
             --build-name=${{ needs.prepare.outputs.build_name }} \
             --build-number=${{ needs.prepare.outputs.build_number }}
 
