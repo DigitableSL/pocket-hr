@@ -2,14 +2,11 @@ name: Build iOS IPA
 
 on:
   push:
-    branches:
-      - domex
-      - human-v2
     tags:
-      - 'release-domex-v*'
-      - 'release-malkey-v*'
-      - 'release-mahajana-v*'
-      - 'release-digitable-v*'
+      - 'ios-domex-v*'
+      - 'ios-malkey-v*'
+      - 'ios-mahajana-v*'
+      - 'ios-digitable-v*'
   workflow_dispatch:
     inputs:
       tenant:
@@ -54,16 +51,16 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TENANT="${{ github.event.inputs.tenant }}"
             EXPORT_METHOD="${{ github.event.inputs.export_method }}"
-          elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
+          elif [[ "${{ github.ref }}" == refs/tags/ios-* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
-            TENANT=$(echo "$TAG" | sed -E 's/^release-([a-z]+)-v.*/\1/')
+            TENANT=$(echo "$TAG" | sed -E 's/^ios-([a-z]+)-v.*/\1/')
             EXPORT_METHOD="app-store"
             if [[ "$TAG" == *-prod ]]; then
               TAG_CORE="${TAG%-prod}"
             else
               TAG_CORE="$TAG"
             fi
-            VER_PART="${TAG_CORE#release-${TENANT}-v}"
+            VER_PART="${TAG_CORE#ios-${TENANT}-v}"
             if [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)$ ]]; then
               BUILD_NAME="${BASH_REMATCH[1]}"
               TAG_BUILD_NUM="${BASH_REMATCH[2]}"
@@ -88,7 +85,7 @@ jobs:
           fi
           if [ -n "${TAG_BUILD_NUM:-}" ]; then
             BUILD_NUMBER="$TAG_BUILD_NUM"
-          elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
+          elif [[ "${{ github.ref }}" == refs/tags/ios-* ]]; then
             BASE_BUILD="${PUBSPEC_BUILD:-0}"
             BUILD_NUMBER=$((BASE_BUILD + ${{ github.run_number }}))
           else
