@@ -5,6 +5,11 @@ on:
     branches:
       - domex
       - human-v2
+    tags:
+      - 'release-domex-v*'
+      - 'release-malkey-v*'
+      - 'release-mahajana-v*'
+      - 'release-digitable-v*'
   workflow_dispatch:
     inputs:
       tenant:
@@ -28,8 +33,78 @@ on:
           - app-store
 
 jobs:
+  prepare:
+    name: Resolve iOS Build Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      tenant: ${{ steps.config.outputs.tenant }}
+      target: ${{ steps.config.outputs.target }}
+      export_method: ${{ steps.config.outputs.export_method }}
+      build_name: ${{ steps.config.outputs.build_name }}
+      build_number: ${{ steps.config.outputs.build_number }}
+    steps:
+      - name: Checkout pubspec.yaml
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: pubspec.yaml
+
+      - name: Determine Tenant, Target, and Version
+        id: config
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TENANT="${{ github.event.inputs.tenant }}"
+            EXPORT_METHOD="${{ github.event.inputs.export_method }}"
+          elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            TENANT=$(echo "$TAG" | sed -E 's/^release-([a-z]+)-v.*/\1/')
+            EXPORT_METHOD="app-store"
+            if [[ "$TAG" == *-prod ]]; then
+              TAG_CORE="${TAG%-prod}"
+            else
+              TAG_CORE="$TAG"
+            fi
+            VER_PART="${TAG_CORE#release-${TENANT}-v}"
+            if [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)$ ]]; then
+              BUILD_NAME="${BASH_REMATCH[1]}"
+              TAG_BUILD_NUM="${BASH_REMATCH[2]}"
+            elif [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-b([0-9]+)$ ]]; then
+              BUILD_NAME="${BASH_REMATCH[1]}"
+              TAG_BUILD_NUM="${BASH_REMATCH[2]}"
+            elif [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              BUILD_NAME="${BASH_REMATCH[1]}"
+              TAG_BUILD_NUM=""
+            fi
+          else
+            TENANT="domex"
+            EXPORT_METHOD="development"
+          fi
+
+          PUBSPEC_LINE=$(grep -E '^version:' pubspec.yaml | head -n1)
+          PUBSPEC_NAME=$(echo "$PUBSPEC_LINE" | sed -n 's/^version:[[:space:]]*\([0-9][0-9.]*\).*/\1/p')
+          PUBSPEC_BUILD=$(echo "$PUBSPEC_LINE" | sed -n 's/.*+\([0-9][0-9]*\).*/\1/p')
+
+          if [ -z "${BUILD_NAME:-}" ]; then
+            BUILD_NAME="${PUBSPEC_NAME:-1.0.0}"
+          fi
+          if [ -n "${TAG_BUILD_NUM:-}" ]; then
+            BUILD_NUMBER="$TAG_BUILD_NUM"
+          elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
+            BASE_BUILD="${PUBSPEC_BUILD:-0}"
+            BUILD_NUMBER=$((BASE_BUILD + ${{ github.run_number }}))
+          else
+            BUILD_NUMBER="${{ github.run_number }}"
+          fi
+
+          echo "tenant=$TENANT" >> $GITHUB_OUTPUT
+          echo "target=lib/main_${TENANT}.dart" >> $GITHUB_OUTPUT
+          echo "export_method=$EXPORT_METHOD" >> $GITHUB_OUTPUT
+          echo "build_name=$BUILD_NAME" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+
   build:
-    name: Build iOS IPA
+    name: Build iOS IPA (${{ needs.prepare.outputs.tenant }})
+    needs: prepare
+    environment: ${{ needs.prepare.outputs.tenant }}
     runs-on: macos-15
     env:
       NODE_OPTIONS: "--no-deprecation"
@@ -58,14 +133,19 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          if [ -z "$BUILD_CERTIFICATE_BASE64" ] || [ -z "$BUILD_PROVISION_PROFILE_BASE64" ]; then
+            echo "::error::Missing iOS signing secrets (BUILD_CERTIFICATE_BASE64 or BUILD_PROVISION_PROFILE_BASE64) in environment '${{ needs.prepare.outputs.tenant }}' or repository secrets."
+            exit 1
+          fi
+
           # Define path variables
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-          # 1. Decode base64 strings into files
-          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > $CERTIFICATE_PATH
-          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > $PP_PATH
+          # 1. Strip whitespace and decode base64 strings into files
+          echo "$BUILD_CERTIFICATE_BASE64" | tr -d '[:space:]' | base64 --decode > $CERTIFICATE_PATH
+          echo "$BUILD_PROVISION_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > $PP_PATH
 
           # 2. Create a temporary keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
@@ -80,34 +160,10 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
-      - name: Determine Tenant and Target
-        id: config
-        run: |
-          # Default configurations
-          TENANT="domex"
-          TARGET="lib/main_domex.dart"
-          EXPORT_METHOD="development"
-          
-          # If triggered manually, use the inputs
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TENANT="${{ github.event.inputs.tenant }}"
-            EXPORT_METHOD="${{ github.event.inputs.export_method }}"
-          else
-            # Default for push event
-            TENANT="domex"
-            EXPORT_METHOD="development"
-          fi
-          
-          TARGET="lib/main_${TENANT}.dart"
-          
-          echo "tenant=$TENANT" >> $GITHUB_OUTPUT
-          echo "target=$TARGET" >> $GITHUB_OUTPUT
-          echo "export_method=$EXPORT_METHOD" >> $GITHUB_OUTPUT
-
       - name: Prepare Tenant iOS Assets and Config
         run: |
           chmod +x tooling/prepare_ios_flavor.sh
-          ./tooling/prepare_ios_flavor.sh ${{ steps.config.outputs.tenant }}
+          ./tooling/prepare_ios_flavor.sh ${{ needs.prepare.outputs.tenant }}
 
       - name: Install Dependencies
         run: |
@@ -123,14 +179,15 @@ jobs:
         run: |
           flutter build ipa --release \
             --tree-shake-icons \
-            -t ${{ steps.config.outputs.target }} \
-            --dart-define=tenant=${{ steps.config.outputs.tenant }} \
-            --export-method=${{ steps.config.outputs.export_method }} \
-            --build-number=${{ github.run_number }}
+            -t ${{ needs.prepare.outputs.target }} \
+            --dart-define=tenant=${{ needs.prepare.outputs.tenant }} \
+            --export-method=${{ needs.prepare.outputs.export_method }} \
+            --build-name=${{ needs.prepare.outputs.build_name }} \
+            --build-number=${{ needs.prepare.outputs.build_number }}
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: app-${{ steps.config.outputs.tenant }}-${{ steps.config.outputs.export_method }}
+          name: app-${{ needs.prepare.outputs.tenant }}-${{ needs.prepare.outputs.export_method }}
           path: build/ios/ipa/*.ipa
           if-no-files-found: error
