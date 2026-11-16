@@ -2,14 +2,11 @@ name: Build Android APK / Play Store
 
 on:
   push:
-    branches:
-      - domex
-      - human-v2
     tags:
-      - 'release-domex-v*'
-      - 'release-malkey-v*'
-      - 'release-mahajana-v*'
-      - 'release-digitable-v*'
+      - 'android-domex-v*'
+      - 'android-malkey-v*'
+      - 'android-mahajana-v*'
+      - 'android-digitable-v*'
   workflow_dispatch:
     inputs:
       tenant:
@@ -74,14 +71,14 @@ jobs:
             FORMAT="${{ github.event.inputs.build_format }}"
             DEPLOY="${{ github.event.inputs.deploy_to_play_store }}"
             TRACK="${{ github.event.inputs.play_store_track }}"
-          elif [[ "${{ github.ref }}" == refs/tags/release-* ]]; then
+          elif [[ "${{ github.ref }}" == refs/tags/android-* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             # Supported tag formats:
-            #   release-<tenant>-v<version>                  (auto build_number = pubspec + run_number, internal track)
-            #   release-<tenant>-v<version>+<buildNumber>    (explicit build_number, internal track)
-            #   release-<tenant>-v<version>-b<buildNumber>   (explicit build_number, internal track)
+            #   android-<tenant>-v<version>                  (auto build_number = pubspec + run_number, internal track)
+            #   android-<tenant>-v<version>+<buildNumber>    (explicit build_number, internal track)
+            #   android-<tenant>-v<version>-b<buildNumber>   (explicit build_number, internal track)
             #   Append -prod to any of the above for production track.
-            TENANT=$(echo "$TAG" | sed -E 's/^release-([a-z]+)-v.*/\1/')
+            TENANT=$(echo "$TAG" | sed -E 's/^android-([a-z]+)-v.*/\1/')
             FORMAT="appbundle"
             DEPLOY="true"
             if [[ "$TAG" == *-prod ]]; then
@@ -91,7 +88,7 @@ jobs:
               TRACK="internal"
               TAG_CORE="$TAG"
             fi
-            VER_PART="${TAG_CORE#release-${TENANT}-v}"
+            VER_PART="${TAG_CORE#android-${TENANT}-v}"
             if [[ "$VER_PART" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)$ ]]; then
               BUILD_NAME="${BASH_REMATCH[1]}"
               TAG_BUILD_NUM="${BASH_REMATCH[2]}"
