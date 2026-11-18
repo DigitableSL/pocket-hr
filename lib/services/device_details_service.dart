@@ -1,12 +1,16 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 class DeviceDetailsService {
   DeviceDetailsService();
+
+  static const MethodChannel _channel =
+      MethodChannel('asia.ceynet.pocket/security');
 
   final Battery _battery = Battery();
   final NetworkInfo _networkInfo = NetworkInfo();
@@ -43,11 +47,19 @@ class DeviceDetailsService {
     try {
       if (Platform.isAndroid) {
         final android = await _deviceInfo.androidInfo;
+        String? secureAndroidId;
+        try {
+          final id = await _channel.invokeMethod<String>('getAndroidId');
+          if (id != null && id.trim().isNotEmpty) {
+            secureAndroidId = id.trim();
+          }
+        } catch (_) {}
         return <String, dynamic>{
           'platform': 'android',
           'model': android.model,
           'brand': android.brand,
-          'androidId': android.id,
+          'androidId': secureAndroidId ?? android.id,
+          'buildId': android.id,
           'device': android.device,
           'version': android.version.release,
         };

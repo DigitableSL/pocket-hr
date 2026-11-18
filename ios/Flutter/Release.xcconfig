@@ -1,11 +1,4 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release-domex.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release-digitable.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release-mahajana.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile-domex.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile-digitable.xcconfig"
-#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.profile-mahajana.xcconfig"
 #include "Generated.xcconfig"
 
 // Keep Xcode module caches inside the project temp directory to avoid

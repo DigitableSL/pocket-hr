@@ -66,6 +66,14 @@ class MainActivity: FlutterActivity() {
                     playScanTone(success)
                     result.success(true)
                 }
+                "getAndroidId" -> {
+                    val androidId = try {
+                        Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+                    } catch (_: Exception) {
+                        ""
+                    }
+                    result.success(androidId)
+                }
                 else -> {
                     result.notImplemented()
                 }
