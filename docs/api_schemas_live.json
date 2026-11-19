@@ -1,0 +1,458 @@
+{
+  "_meta": {
+    "generated_at_utc": "2026-11-19T10:33:16.952888+00:00",
+    "base_url": "https://api.human.go.digitable.io/human/v2/api",
+    "tenant": "domex",
+    "note": "Auto-generated PII-free structural schemas from read-only GET endpoints."
+  },
+  "endpoints": {
+    "GET /auth/me": {
+      "status": 200,
+      "schema": {
+        "data": {
+          "_id": "string",
+          "access_scopes": [
+            "string"
+          ],
+          "auth": {
+            "changed_by": "string"
+          },
+          "check_remote": "boolean",
+          "cts": "integer",
+          "customfields": [
+            {
+              "input_name": "string",
+              "input_value": "string"
+            }
+          ],
+          "direct_reportee": "null",
+          "documents": [
+            {
+              "file_size": "integer",
+              "input_name": "string",
+              "input_value": "string",
+              "thumb_image": "string",
+              "ts": "integer"
+            }
+          ],
+          "email": "string",
+          "employment": [
+            {
+              "approvedBy": "string",
+              "date": "string",
+              "effectiveDate": "string",
+              "executedByJob": "boolean",
+              "isPromotion": "boolean",
+              "package": {
+                "_id": "string",
+                "activated": "boolean",
+                "al_name": [
+                  "empty"
+                ],
+                "cadre": "string",
+                "cts": "integer",
+                "epf_enabled": "boolean",
+                "id": "string",
+                "job_description": [
+                  "empty"
+                ],
+                "leave": {
+                  "annual": "integer",
+                  "casual": "integer",
+                  "medical": "integer"
+                },
+                "name": "string",
+                "notes": "string",
+                "other": [
+                  "empty"
+                ],
+                "package_basic": "integer",
+                "probation": "string",
+                "rates": {
+                  "early": "boolean",
+                  "holiday": "boolean",
+                  "late": "boolean",
+                  "night_shift": "boolean",
+                  "ot": "boolean",
+                  "rest_day": "boolean"
+                },
+                "salary_transfer": "boolean",
+                "tags": {
+                  "cost_center": "string",
+                  "department": "string",
+                  "designation": "string",
+                  "primary": "string",
+                  "secondary": "string"
+                },
+                "tax_enabled": "boolean",
+                "terms": {
+                  "attendance_excempted": "boolean",
+                  "days": {
+                    "friday": "boolean",
+                    "monday": "boolean",
+                    "saturday": "boolean",
+                    "sunday": "boolean",
+                    "thursday": "boolean",
+                    "tuesday": "boolean",
+                    "wednesday": "boolean"
+                  },
+                  "end_time": "string",
+                  "half": {
+                    "day": "string",
+                    "end": "string",
+                    "start": "string"
+                  },
+                  "start_time": "string",
+                  "working_days_month": "integer",
+                  "working_hours": "integer"
+                },
+                "uts": "integer",
+                "wages": {
+                  "basic_salary": "integer",
+                  "bra": "integer",
+                  "bra2": "integer",
+                  "updated_at": "string"
+                }
+              },
+              "scheduledBy": {
+                "email": "string",
+                "name": "string",
+                "userId": "string"
+              },
+              "type": "string"
+            }
+          ],
+          "employment_status": "string",
+          "exit_visible": "integer",
+          "fcm_token": "string",
+          "is_impersonating": "boolean",
+          "joined_date": "integer",
+          "maxDeviceLimit": "integer",
+          "mobileMenu": {
+            "items": [
+              {
+                "key": "string",
+                "label": "string"
+              }
+            ]
+          },
+          "package": {
+            "_id": "string",
+            "activated": "boolean",
+            "al_name": [
+              "empty"
+            ],
+            "cadre": "string",
+            "cts": "integer",
+            "epf_enabled": "boolean",
+            "id": "string",
+            "job_description": [
+              "empty"
+            ],
+            "leave": {
+              "annual": "integer",
+              "casual": "integer",
+              "medical": "integer"
+            },
+            "name": "string",
+            "notes": "string",
+            "other": [
+              "empty"
+            ],
+            "package_basic": "integer",
+            "probation": "string",
+            "rates": {
+              "early": "boolean",
+              "holiday": "boolean",
+              "late": "boolean",
+              "night_shift": "boolean",
+              "ot": "boolean",
+              "rest_day": "boolean"
+            },
+            "salary_transfer": "boolean",
+            "tags": {
+              "cost_center": "string",
+              "department": "string",
+              "designation": "string",
+              "primary": "string",
+              "secondary": "string"
+            },
+            "tax_enabled": "boolean",
+            "terms": {
+              "attendance_excempted": "boolean",
+              "days": {
+                "friday": "boolean",
+                "monday": "boolean",
+                "saturday": "boolean",
+                "sunday": "boolean",
+                "thursday": "boolean",
+                "tuesday": "boolean",
+                "wednesday": "boolean"
+              },
+              "end_time": "string",
+              "half": {
+                "day": "string",
+                "end": "string",
+                "start": "string"
+              },
+              "start_time": "string",
+              "working_days_month": "integer",
+              "working_hours": "integer"
+            },
+            "uts": "integer",
+            "wages": {
+              "basic_salary": "integer",
+              "bra": "integer",
+              "bra2": "integer",
+              "updated_at": "string"
+            }
+          },
+          "perm": [
+            "string"
+          ],
+          "registeredDevices": [
+            {
+              "deviceId": "string",
+              "lastLoginAt": "string",
+              "model": "string",
+              "registeredAt": "string",
+              "status": "string"
+            }
+          ],
+          "remote": "boolean",
+          "remote_mode": "integer",
+          "resource_overrides": [
+            "empty"
+          ],
+          "role": "string",
+          "sensitivity": "string",
+          "sort": {
+            "epf": "integer",
+            "prefix": "string"
+          },
+          "status": "string",
+          "tags": [
+            "string"
+          ],
+          "todo_permissions": [
+            "empty"
+          ],
+          "tz": "string",
+          "updatedAt": "string",
+          "username": "string",
+          "uts": "integer"
+        },
+        "message": "string",
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    },
+    "GET /leave": {
+      "status": 200,
+      "schema": {
+        "data": [
+          "empty"
+        ],
+        "message": "string",
+        "meta": {
+          "limit": "integer",
+          "page": "integer",
+          "pages": "integer",
+          "stats": {
+            "approved": "integer",
+            "byStatus": {
+              "approved": "integer",
+              "cancelled": "integer",
+              "pending": "integer",
+              "rejected": "integer"
+            },
+            "byType": {},
+            "cancelled": "integer",
+            "pending": "integer",
+            "rejected": "integer",
+            "total": "integer"
+          },
+          "total": "integer"
+        },
+        "pagination": {
+          "limit": "integer",
+          "page": "integer",
+          "pages": "integer",
+          "total": "integer"
+        },
+        "stats": {
+          "approved": "integer",
+          "byStatus": {
+            "approved": "integer",
+            "cancelled": "integer",
+            "pending": "integer",
+            "rejected": "integer"
+          },
+          "byType": {},
+          "cancelled": "integer",
+          "pending": "integer",
+          "rejected": "integer",
+          "total": "integer"
+        },
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    },
+    "GET /todos": {
+      "status": 403,
+      "schema": {
+        "_http_error": "string"
+      }
+    },
+    "GET /teams/my-team": {
+      "status": 403,
+      "schema": {
+        "_http_error": "string"
+      }
+    },
+    "GET /teams/my-team/leaves": {
+      "status": 403,
+      "schema": {
+        "_http_error": "string"
+      }
+    },
+    "GET /teams/my-team/attendance": {
+      "status": 403,
+      "schema": {
+        "_http_error": "string"
+      }
+    },
+    "GET /leave/balance": {
+      "status": 200,
+      "schema": {
+        "data": {
+          "available": {
+            "annual": "integer",
+            "casual": "integer",
+            "medical": "integer"
+          },
+          "balance": {
+            "annual": "integer",
+            "casual": "integer",
+            "medical": "integer"
+          },
+          "pending": {
+            "annual": "integer",
+            "casual": "integer",
+            "medical": "integer"
+          },
+          "quota": {
+            "annual": "integer",
+            "casual": "integer",
+            "medical": "integer",
+            "short": "integer"
+          },
+          "totalAvailable": "integer",
+          "totalBalance": "integer",
+          "totalEntitled": "integer",
+          "totalPending": "integer",
+          "totalUsed": "integer",
+          "used": {
+            "annual": "integer",
+            "casual": "integer",
+            "medical": "integer"
+          },
+          "userId": "string"
+        },
+        "message": "string",
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    },
+    "GET /leave/apply-eligibility/{uid}": {
+      "status": 200,
+      "schema": {
+        "data": {
+          "configuredDays": "integer",
+          "effectiveDays": "integer",
+          "lockedPayrollEnd": "null",
+          "maxDate": "string",
+          "minDate": "string",
+          "restrictedByPayrollLock": "boolean",
+          "today": "string",
+          "userId": "string"
+        },
+        "message": "string",
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    },
+    "GET /attendance/user/{tenant}/{uid}/": {
+      "status": 200,
+      "schema": {
+        "data": {
+          "pagination": {
+            "limit": "integer",
+            "page": "integer",
+            "total": "integer",
+            "totalPages": "integer"
+          },
+          "pending": [
+            "empty"
+          ],
+          "records": [
+            "empty"
+          ]
+        },
+        "message": "string",
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    },
+    "GET /variables/variables/{uid}": {
+      "status": 403,
+      "schema": {
+        "_http_error": "string"
+      }
+    },
+    "GET /debts/{uid}": {
+      "status": 403,
+      "schema": {
+        "_http_error": "string"
+      }
+    },
+    "GET /payroll/salary-slips/user/{uid}": {
+      "status": 200,
+      "schema": {
+        "data": {
+          "items": [
+            "empty"
+          ],
+          "total": "integer"
+        },
+        "message": "string",
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    },
+    "GET /teams/locations-by-userid/{uid}": {
+      "status": 200,
+      "schema": {
+        "data": {
+          "data": [
+            {
+              "lat": "number",
+              "lng": "number",
+              "name": "string",
+              "tags": [
+                "string"
+              ]
+            }
+          ],
+          "meta": {
+            "timestamp": "string"
+          },
+          "success": "boolean"
+        },
+        "message": "string",
+        "success": "boolean",
+        "timestamp": "string"
+      }
+    }
+  }
+}

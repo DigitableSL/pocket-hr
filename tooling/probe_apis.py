@@ -98,17 +98,16 @@ def diff_schemas(old: Any, new: Any, prefix: str = "") -> list[str]:
     return changes
 
 
-def fetch_get(url: str, token: str) -> tuple[int, Any]:
-    req = urllib.request.Request(
-        url,
-        method="GET",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Device-Time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "User-Agent": "DT-PocketHR-SchemaProbe/1.0",
-        },
-    )
+def fetch_get(url: str, token: str, tenant: str = "") -> tuple[int, Any]:
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "Device-Time": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "User-Agent": "DT-PocketHR-SchemaProbe/1.0",
+    }
+    if tenant:
+        headers["Tenant"] = tenant
+    req = urllib.request.Request(url, method="GET", headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
@@ -128,7 +127,7 @@ def extract_uid(me_payload: Any) -> str:
         return ""
     for container in (me_payload.get("data"), me_payload.get("user"), me_payload):
         if isinstance(container, dict):
-            for key in ("id", "user_id", "uid", "employee_id"):
+            for key in ("_id", "id", "user_id", "uid", "employee_id"):
                 val = container.get(key)
                 if val is not None and str(val).strip():
                     return str(val).strip()
@@ -161,7 +160,7 @@ def main() -> int:
 
     # 1. Probe /auth/me first so we can auto-discover uid if not provided
     me_url = f"{base_url}/auth/me?{urllib.parse.urlencode({'tenant': tenant})}"
-    status, me_body = fetch_get(me_url, token)
+    status, me_body = fetch_get(me_url, token, tenant)
     print(f"GET /auth/me -> HTTP {status}")
     results["endpoints"]["GET /auth/me"] = {
         "status": status,
@@ -174,7 +173,7 @@ def main() -> int:
 
     # 2. Remaining read-only GET endpoints
     endpoints: list[tuple[str, str]] = [
-        ("GET /leave", f"{base_url}/leave?tenant={tenant}" + (f"&userId={uid}" if uid else "")),
+        ("GET /leave", f"{base_url}/leave?tenant={tenant}" + (f"&userIds={uid}" if uid else "")),
         ("GET /todos", f"{base_url}/todos?tenant={tenant}"),
         ("GET /teams/my-team", f"{base_url}/teams/my-team?tenant={tenant}"),
         ("GET /teams/my-team/leaves", f"{base_url}/teams/my-team/leaves?tenant={tenant}"),
@@ -195,7 +194,7 @@ def main() -> int:
         print("Warning: user_id not available; skipping {uid}-scoped endpoints.", file=sys.stderr)
 
     for label, url in endpoints:
-        st, body = fetch_get(url, token)
+        st, body = fetch_get(url, token, tenant)
         print(f"{label:42s} -> HTTP {st}")
         results["endpoints"][label] = {
             "status": st,
