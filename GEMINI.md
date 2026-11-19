@@ -21,6 +21,7 @@
 4. **Concise responses**: Keep explanations brief and link directly to modified symbols/lines.
 
 ## 3. Architecture Quick Map (Avoid Broad Searches)
+- **API Reference (`docs/API_REFERENCE.md`)**: Complete endpoint, header, auth, and payload map (read this first instead of scanning `lib/api/api_service.dart`; refresh live `GET` schemas with `tooling/probe_apis.py`).
 - **Native MethodChannel (`asia.ceynet.pocket/security`)**:
   - Android: `android/app/src/main/kotlin/asia/ceynet/human/pocket/MainActivity.kt` (`isDevModeEnabled`, `isMockLocation`, `isAutoTimeEnabled`)
   - iOS: `ios/Runner/AppDelegate.swift`
