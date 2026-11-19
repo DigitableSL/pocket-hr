@@ -36,6 +36,11 @@ on:
         options:
           - macos-15-intel
           - macos-15
+      deploy_to_testflight:
+        description: 'Upload IPA to TestFlight / App Store Connect (requires App Store Connect API secrets)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   prepare:
@@ -48,6 +53,7 @@ jobs:
       build_name: ${{ steps.config.outputs.build_name }}
       build_number: ${{ steps.config.outputs.build_number }}
       runner: ${{ steps.config.outputs.runner }}
+      deploy: ${{ steps.config.outputs.deploy }}
     steps:
       - name: Checkout pubspec.yaml
         uses: actions/checkout@v7
@@ -60,10 +66,12 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TENANT="${{ github.event.inputs.tenant }}"
             EXPORT_METHOD="${{ github.event.inputs.export_method }}"
+            DEPLOY="${{ github.event.inputs.deploy_to_testflight }}"
           elif [[ "${{ github.ref }}" == refs/tags/ios-* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             TENANT=$(echo "$TAG" | sed -E 's/^ios-([a-z]+)-v.*/\1/')
             EXPORT_METHOD="app-store"
+            DEPLOY="true"
             if [[ "$TAG" == *-prod ]]; then
               TAG_CORE="${TAG%-prod}"
             else
@@ -83,6 +91,7 @@ jobs:
           else
             TENANT="domex"
             EXPORT_METHOD="development"
+            DEPLOY="false"
           fi
 
           PUBSPEC_LINE=$(grep -E '^version:' pubspec.yaml | head -n1)
@@ -112,6 +121,7 @@ jobs:
           echo "build_name=$BUILD_NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "runner=$RUNNER" >> $GITHUB_OUTPUT
+          echo "deploy=${DEPLOY:-false}" >> $GITHUB_OUTPUT
 
   build:
     name: Build iOS IPA (${{ needs.prepare.outputs.tenant }})
@@ -271,3 +281,37 @@ jobs:
           name: app-${{ needs.prepare.outputs.tenant }}-${{ needs.prepare.outputs.export_method }}
           path: build/ios/ipa/*.ipa
           if-no-files-found: error
+
+      - name: Verify App Store Connect API Secrets
+        if: needs.prepare.outputs.deploy == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ]; then
+            echo "::error::Missing App Store Connect API secrets (APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, or APP_STORE_CONNECT_PRIVATE_KEY)."
+            exit 1
+          fi
+
+      - name: Upload IPA to TestFlight (App Store Connect)
+        if: needs.prepare.outputs.deploy == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          printf '%s\n' "$ASC_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+
+          IPA_FILE=$(ls build/ios/ipa/*.ipa | head -n1)
+          echo "Uploading $IPA_FILE to App Store Connect / TestFlight..."
+          xcrun altool --upload-app \
+            -t ios \
+            -f "$IPA_FILE" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+          rm -f "$KEY_PATH"
