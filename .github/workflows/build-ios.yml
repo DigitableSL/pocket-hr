@@ -22,12 +22,20 @@ on:
       export_method:
         description: 'IPA Export Method'
         required: true
-        default: 'development'
+        default: 'app-store'
         type: choice
         options:
-          - development
-          - ad-hoc
           - app-store
+          - ad-hoc
+          - development
+      runner:
+        description: 'macOS Runner (use macos-15-intel if arm64 is queued)'
+        required: false
+        default: 'macos-15-intel'
+        type: choice
+        options:
+          - macos-15-intel
+          - macos-15
 
 jobs:
   prepare:
@@ -39,6 +47,7 @@ jobs:
       export_method: ${{ steps.config.outputs.export_method }}
       build_name: ${{ steps.config.outputs.build_name }}
       build_number: ${{ steps.config.outputs.build_number }}
+      runner: ${{ steps.config.outputs.runner }}
     steps:
       - name: Checkout pubspec.yaml
         uses: actions/checkout@v7
@@ -92,17 +101,23 @@ jobs:
             BUILD_NUMBER="${{ github.run_number }}"
           fi
 
+          RUNNER="macos-15-intel"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.runner }}" ]; then
+            RUNNER="${{ github.event.inputs.runner }}"
+          fi
+
           echo "tenant=$TENANT" >> $GITHUB_OUTPUT
           echo "target=lib/main_${TENANT}.dart" >> $GITHUB_OUTPUT
           echo "export_method=$EXPORT_METHOD" >> $GITHUB_OUTPUT
           echo "build_name=$BUILD_NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "runner=$RUNNER" >> $GITHUB_OUTPUT
 
   build:
     name: Build iOS IPA (${{ needs.prepare.outputs.tenant }})
     needs: prepare
     environment: ${{ needs.prepare.outputs.tenant }}
-    runs-on: macos-15
+    runs-on: ${{ needs.prepare.outputs.runner }}
     timeout-minutes: 35
     env:
       NODE_OPTIONS: "--no-deprecation"
@@ -110,12 +125,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
-
-      - name: Set up Java
-        uses: actions/setup-java@v6
-        with:
-          distribution: 'zulu'
-          java-version: '17'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -229,10 +238,20 @@ jobs:
         run: |
           flutter pub get
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-pods-${{ hashFiles('ios/Podfile.lock', 'ios/Podfile') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
       - name: Build CocoaPods
         run: |
           cd ios
-          pod install --repo-update
+          pod install || pod install --repo-update
           cd ..
 
       - name: Build IPA
