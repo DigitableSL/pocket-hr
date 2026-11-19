@@ -301,13 +301,20 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
+          ASC_KEY_ID=$(printf '%s' "$ASC_KEY_ID" | tr -d '[:space:]')
+          ASC_ISSUER_ID=$(printf '%s' "$ASC_ISSUER_ID" | tr -d '[:space:]')
+
           mkdir -p ~/.appstoreconnect/private_keys
           KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          printf '%s\n' "$ASC_PRIVATE_KEY" > "$KEY_PATH"
+          if printf '%s' "$ASC_PRIVATE_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_PRIVATE_KEY" | tr -d '\r' > "$KEY_PATH"
+          else
+            printf '%s' "$ASC_PRIVATE_KEY" | tr -d '[:space:]' | base64 --decode | tr -d '\r' > "$KEY_PATH"
+          fi
           chmod 600 "$KEY_PATH"
 
           IPA_FILE=$(ls build/ios/ipa/*.ipa | head -n1)
-          echo "Uploading $IPA_FILE to App Store Connect / TestFlight..."
+          echo "Uploading $IPA_FILE to App Store Connect / TestFlight (Key ID: ${ASC_KEY_ID})..."
           xcrun altool --upload-app \
             -t ios \
             -f "$IPA_FILE" \
