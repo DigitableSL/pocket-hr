@@ -1266,18 +1266,45 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
     final isPending = status == 'pending';
     final animation = _leaveAnimationControllers[index];
 
-    final session = leave['session']?.toString() ??
-        ((leave['leave_type'] == 'half' || leave['type'] == 'half')
-            ? (leave['half_period'] ?? 'half').toString()
-            : 'full_day');
-    final isHalfDay = session == 'morning' ||
-        session == 'evening' ||
-        session == 'half';
-    final String dateText = isHalfDay
-        ? (session == 'morning'
-            ? '0.5 Day - Morning'
-            : (session == 'evening' ? '0.5 Day - Evening' : '0.5 Day'))
-        : '${dates.length} ${dates.length > 1 ? l10n.daysLabel : 'day'}';
+    final rawTypeLower =
+        (leave['leave_type'] ?? leave['type'] ?? '').toString().toLowerCase();
+    final shortPeriod =
+        (leave['short_leave_period'] ?? leave['shortLeavePeriod'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+    final halfPeriod = (leave['half_period'] ?? leave['halfPeriod'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final rawSession =
+        (leave['session'] ?? '').toString().trim().toLowerCase();
+
+    final isShortLeave =
+        rawTypeLower.contains('short') || shortPeriod.isNotEmpty;
+    final isHalfDay = !isShortLeave &&
+        (halfPeriod == 'morning' ||
+            halfPeriod == 'evening' ||
+            rawSession == 'morning' ||
+            rawSession == 'evening' ||
+            rawSession == 'half' ||
+            rawTypeLower == 'half');
+
+    final resolvedPeriod = shortPeriod.isNotEmpty
+        ? shortPeriod
+        : (halfPeriod.isNotEmpty ? halfPeriod : rawSession);
+
+    final String dateText = isShortLeave
+        ? (resolvedPeriod == 'morning'
+            ? '2hr Morning'
+            : (resolvedPeriod == 'evening' ? '2hr Evening' : '2hr Short'))
+        : (isHalfDay
+            ? (resolvedPeriod == 'morning'
+                ? 'Half · Morning'
+                : (resolvedPeriod == 'evening' ? 'Half · Evening' : 'Half Day'))
+            : (dates.length > 1
+                ? '${dates.length} ${l10n.daysLabel}'
+                : l10n.fullDay));
 
     final bool isExpanded = _expandedLeaveId == leaveId;
 
@@ -1326,7 +1353,7 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       icon: Icons.check,
-                      label: l10n.approvedLable,
+                      label: l10n.approveAction,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(15),
                         bottomLeft: Radius.circular(15),
@@ -1362,7 +1389,7 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
                       icon: Icons.close,
-                      label: l10n.rejectedLable,
+                      label: l10n.rejectAction,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(15),
                         bottomRight: Radius.circular(15),
@@ -1407,36 +1434,45 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                                const SizedBox(height: 8),
                                Row(
                                  children: [
-                                   AutoSizeText(
-                                     _getLeaveTypeLabel(context, type),
-                                     style: TextStyle(
-                                       fontSize: 13,
-                                       fontWeight: FontWeight.bold,
-                                       color: _burgundy,
+                                   Flexible(
+                                     child: AutoSizeText(
+                                       _getLeaveTypeLabel(context, type),
+                                       maxLines: 1,
+                                       minFontSize: 10,
+                                       overflow: TextOverflow.ellipsis,
+                                       style: TextStyle(
+                                         fontSize: 13,
+                                         fontWeight: FontWeight.bold,
+                                         color: _burgundy,
+                                       ),
                                      ),
                                    ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: isHalfDay
-                                          ? const Color(0xFFFFF3E0) // soft orange
-                                          : const Color(0xFFE8F5E9), // soft green
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      dateText,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: isHalfDay
-                                            ? const Color(0xFFE65100) // dark orange
-                                            : const Color(0xFF2E7D32), // dark green
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                   const SizedBox(width: 8),
+                                   Container(
+                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                     decoration: BoxDecoration(
+                                       color: isShortLeave
+                                           ? const Color(0xFFE0F2FE)
+                                           : (isHalfDay
+                                               ? const Color(0xFFFFF3E0)
+                                               : const Color(0xFFE8F5E9)),
+                                       borderRadius: BorderRadius.circular(6),
+                                     ),
+                                     child: Text(
+                                       dateText,
+                                       style: TextStyle(
+                                         fontSize: 11,
+                                         fontWeight: FontWeight.bold,
+                                         color: isShortLeave
+                                             ? const Color(0xFF0369A1)
+                                             : (isHalfDay
+                                                 ? const Color(0xFFE65100)
+                                                 : const Color(0xFF2E7D32)),
+                                       ),
+                                     ),
+                                   ),
+                                 ],
+                               ),
                             ],
                           ),
                         ),
@@ -1476,10 +1512,12 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                                   const SizedBox(width: 4),
                                   AutoSizeText(
                                     status == 'approved'
-                                        ? 'approved'
+                                        ? 'Approved'
                                         : (status == 'rejected'
-                                            ? 'rejected'
-                                            : 'Pending'),
+                                            ? 'Rejected'
+                                            : l10n.pendingLabel),
+                                    maxLines: 1,
+                                    minFontSize: 9,
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -1716,7 +1754,10 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                                       },
                                       icon: const Icon(Icons.close, size: 16),
                                       label: AutoSizeText(
-                                        l10n.rejectedLable,
+                                        l10n.rejectAction,
+                                        maxLines: 1,
+                                        minFontSize: 10,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(fontSize: 12),
                                       ),
                                       style: OutlinedButton.styleFrom(
@@ -1746,7 +1787,10 @@ class _MobileTeamState extends State<MobileTeam> with TickerProviderStateMixin {
                                         color: Colors.white,
                                       ),
                                       label: AutoSizeText(
-                                        l10n.approvedLable,
+                                        l10n.approveAction,
+                                        maxLines: 1,
+                                        minFontSize: 10,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(color: Colors.white, fontSize: 12),
                                       ),
                                       style: ElevatedButton.styleFrom(

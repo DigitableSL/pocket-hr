@@ -6,6 +6,10 @@ class MyLeavesModel {
   String leaveType;
   String type;
   String session;
+  String halfPeriod;
+  String shortLeavePeriod;
+  String approvedByName;
+  String deletionReason;
   String description;
   String status;
 
@@ -17,6 +21,10 @@ class MyLeavesModel {
     required this.leaveType,
     required this.type,
     required this.session,
+    this.halfPeriod = '',
+    this.shortLeavePeriod = '',
+    this.approvedByName = '',
+    this.deletionReason = '',
     required this.description,
     required this.status,
   });
@@ -104,7 +112,18 @@ class MyLeavesModel {
           : s(json['leave_status'] ?? json['leaveStatus']),
 
       // Additional required fields in this repo
-      session: s(json['session']).isNotEmpty ? s(json['session']) : 'full_day',
+      session: _resolveSession(
+        rawSession: s(json['session']),
+        halfPeriod: s(json['half_period'] ?? json['halfPeriod']),
+        shortLeavePeriod:
+            s(json['short_leave_period'] ?? json['shortLeavePeriod']),
+        leaveType: v2Type,
+      ),
+      halfPeriod: s(json['half_period'] ?? json['halfPeriod']),
+      shortLeavePeriod:
+          s(json['short_leave_period'] ?? json['shortLeavePeriod']),
+      approvedByName: s(json['approvedByName'] ?? json['approved_by_name']),
+      deletionReason: s(json['deletion_reason'] ?? json['deletionReason']),
       coveringEmployee: b(json['coveringEmployee'] ?? json['covering_employee']),
 
       // Optional fields when available
@@ -113,6 +132,29 @@ class MyLeavesModel {
           ? s(json['description'])
           : v2Reason,
     );
+  }
+
+  static String _resolveSession({
+    required String rawSession,
+    required String halfPeriod,
+    required String shortLeavePeriod,
+    required String leaveType,
+  }) {
+    final s = rawSession.trim().toLowerCase();
+    final hp = halfPeriod.trim().toLowerCase();
+    final sp = shortLeavePeriod.trim().toLowerCase();
+    final lt = leaveType.trim().toLowerCase();
+
+    if (lt.contains('short') || sp.isNotEmpty) {
+      if (sp == 'morning' || sp == 'evening') return sp;
+      if (s == 'morning' || s == 'evening') return s;
+      return 'short_leave';
+    }
+    if (hp == 'morning' || hp == 'evening') return hp;
+    if (s == 'morning' || s == 'evening') return s;
+    if (s.isNotEmpty) return s;
+    if (lt == 'half') return 'half';
+    return 'full_day';
   }
 
   /// Build a MyLeavesModel from the v2 leave API shape or from a normalized map.
@@ -159,7 +201,15 @@ class MyLeavesModel {
     final title = s(json['leave_title'] ?? json['leaveTitle'] ?? json['reason'] ?? json['description']);
 
     // Some constructors require these in this repo
-    final session = s(json['session']).isNotEmpty ? s(json['session']) : 'full_day';
+    final halfPeriod = s(json['half_period'] ?? json['halfPeriod']);
+    final shortLeavePeriod =
+        s(json['short_leave_period'] ?? json['shortLeavePeriod']);
+    final session = _resolveSession(
+      rawSession: s(json['session']),
+      halfPeriod: halfPeriod,
+      shortLeavePeriod: shortLeavePeriod,
+      leaveType: type,
+    );
     final coveringEmployee = (json['coveringEmployee'] ?? json['covering_employee'] ?? false) == true;
 
     // Optional fields when available
@@ -170,6 +220,10 @@ class MyLeavesModel {
       leaveType: type,
       status: status,
       session: session,
+      halfPeriod: halfPeriod,
+      shortLeavePeriod: shortLeavePeriod,
+      approvedByName: s(json['approvedByName'] ?? json['approved_by_name']),
+      deletionReason: s(json['deletion_reason'] ?? json['deletionReason']),
       coveringEmployee: coveringEmployee,
       type: type,
       description: s(json['description']).isNotEmpty ? s(json['description']) : title,

@@ -996,22 +996,75 @@ class _LeaveHistoryCardWidgetState extends State<_LeaveHistoryCardWidget> {
     final from = model.fromDate.toString();
     final to = model.toDate.toString();
 
-    final isHalfDay = model.session == 'morning' ||
-        model.session == 'evening' ||
-        model.session == 'half' ||
-        model.leaveType == 'half' ||
-        model.type == 'half';
+    final ltLower = model.leaveType.toLowerCase();
+    final tLower = model.type.toLowerCase();
+    final sessLower = model.session.toLowerCase().trim();
+    final halfPeriodLower = model.halfPeriod.toLowerCase().trim();
+    final shortPeriodLower = model.shortLeavePeriod.toLowerCase().trim();
+
+    final isShortLeave = ltLower.contains('short') ||
+        tLower.contains('short') ||
+        shortPeriodLower.isNotEmpty;
+    final isHalfDay = !isShortLeave &&
+        (halfPeriodLower == 'morning' ||
+            halfPeriodLower == 'evening' ||
+            sessLower == 'morning' ||
+            sessLower == 'evening' ||
+            sessLower == 'half' ||
+            ltLower == 'half' ||
+            tLower == 'half');
+
+    final String resolvedPeriod = shortPeriodLower.isNotEmpty
+        ? shortPeriodLower
+        : (halfPeriodLower.isNotEmpty ? halfPeriodLower : sessLower);
+    final bool isMorning = resolvedPeriod == 'morning';
+    final bool isEvening = resolvedPeriod == 'evening';
 
     final days = _calculateDays(from, to);
     final durationLabel = days == 1
         ? '1 ${AppLocalizations.of(context)!.day}'
         : '$days ${AppLocalizations.of(context)!.days}';
 
-    final String tagLabel = days > 1
-        ? durationLabel
-        : (isHalfDay ? AppLocalizations.of(context)!.halfDay : AppLocalizations.of(context)!.fullDay);
-    final Color tagBg = isHalfDay ? const Color(0xFFFFF3E0) : const Color(0xFFF1F5F9);
-    final Color tagFg = isHalfDay ? const Color(0xFFE65100) : const Color(0xFF334155);
+    final String tagLabel;
+    final String detailDurationLabel;
+    final Color tagBg;
+    final Color tagFg;
+
+    if (isShortLeave) {
+      tagLabel = isMorning
+          ? '2hr Morning'
+          : (isEvening ? '2hr Evening' : '2hr Short');
+      detailDurationLabel = isMorning
+          ? 'Short Leave — 2 hrs (Morning)'
+          : (isEvening
+              ? 'Short Leave — 2 hrs (Evening)'
+              : 'Short Leave — 2 hrs');
+      tagBg = const Color(0xFFE0F2FE);
+      tagFg = const Color(0xFF0369A1);
+    } else if (isHalfDay) {
+      tagLabel = isMorning
+          ? 'Half · Morning'
+          : (isEvening
+              ? 'Half · Evening'
+              : AppLocalizations.of(context)!.halfDay);
+      detailDurationLabel = isMorning
+          ? AppLocalizations.of(context)!.halfDayMorning
+          : (isEvening
+              ? AppLocalizations.of(context)!.halfDayEvening
+              : AppLocalizations.of(context)!.halfDay);
+      tagBg = const Color(0xFFFFF3E0);
+      tagFg = const Color(0xFFE65100);
+    } else if (days > 1) {
+      tagLabel = durationLabel;
+      detailDurationLabel = '${AppLocalizations.of(context)!.fullDay} ($durationLabel)';
+      tagBg = const Color(0xFFF1F5F9);
+      tagFg = const Color(0xFF334155);
+    } else {
+      tagLabel = AppLocalizations.of(context)!.fullDay;
+      detailDurationLabel = '${AppLocalizations.of(context)!.fullDay} ($durationLabel)';
+      tagBg = const Color(0xFFF1F5F9);
+      tagFg = const Color(0xFF334155);
+    }
 
     final status = model.status.toString().toLowerCase();
     String statusLabel = AppLocalizations.of(context)!.pendingLabel;
@@ -1166,19 +1219,6 @@ class _LeaveHistoryCardWidgetState extends State<_LeaveHistoryCardWidget> {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            if (hasReason && !_isExpanded) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                model.description.trim(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: HRColors.brandGreyText.withOpacity(0.8),
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -1237,8 +1277,34 @@ class _LeaveHistoryCardWidgetState extends State<_LeaveHistoryCardWidget> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'DURATION',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: HRColors.brandGreyText,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                              Flexible(
+                                child: Text(
+                                  detailDurationLabel,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: HRColors.brandDarkText,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
                           Text(
-                            'REASON',
+                            'REMARK',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
@@ -1248,13 +1314,52 @@ class _LeaveHistoryCardWidgetState extends State<_LeaveHistoryCardWidget> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            hasReason ? model.description : 'No reason provided',
+                            hasReason ? model.description.trim() : 'No remark provided',
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w500,
                               color: HRColors.brandDarkText,
                             ),
                           ),
+                          if (model.approvedByName.trim().isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  status == 'rejected' ? 'REVIEWED BY' : 'APPROVED BY',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: HRColors.brandGreyText,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Text(
+                                    model.approvedByName.trim(),
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: HRColors.brandDarkText,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (model.deletionReason.trim().isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              model.deletionReason.trim(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: statusFg,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
