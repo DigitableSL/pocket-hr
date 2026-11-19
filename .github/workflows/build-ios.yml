@@ -29,12 +29,13 @@ on:
           - ad-hoc
           - development
       runner:
-        description: 'macOS Runner (use macos-15-intel if arm64 is queued)'
+        description: 'macOS Runner (use macos-26 or macos-15-intel with Xcode 26+)'
         required: false
         default: 'macos-15-intel'
         type: choice
         options:
           - macos-15-intel
+          - macos-26
           - macos-15
       deploy_to_testflight:
         description: 'Upload IPA to TestFlight / App Store Connect (requires App Store Connect API secrets)'
@@ -135,6 +136,23 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
+
+      - name: Select Xcode 26+ (Required by App Store Connect)
+        run: |
+          echo "Installed Xcode versions:"
+          ls -d /Applications/Xcode*.app || true
+          XCODE_26=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n1)
+          if [ -n "$XCODE_26" ]; then
+            echo "Selecting $XCODE_26..."
+            sudo xcode-select -s "$XCODE_26/Contents/Developer"
+          else
+            LATEST_XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n1)
+            if [ -n "$LATEST_XCODE" ]; then
+              echo "Selecting $LATEST_XCODE..."
+              sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+            fi
+          fi
+          xcodebuild -version
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
