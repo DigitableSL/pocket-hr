@@ -9,6 +9,8 @@ class AttendancePunchModel {
   final double lat;
   final double lng;
   final String address;
+  final double? locationAccuracy;
+  final double? distance;
 
   final String deviceId;
   final String deviceModel;
@@ -34,6 +36,8 @@ class AttendancePunchModel {
     required this.lat,
     required this.lng,
     required this.address,
+    this.locationAccuracy,
+    this.distance,
     required this.deviceId,
     required this.deviceModel,
     required this.deviceBrand,
@@ -58,6 +62,8 @@ class AttendancePunchModel {
       'lat': lat,
       'lng': lng,
       'address': address,
+      'location_accuracy': locationAccuracy,
+      'distance': distance,
       'device_id': deviceId,
       'device_model': deviceModel,
       'device_brand': deviceBrand,
@@ -83,6 +89,12 @@ class AttendancePunchModel {
       lat: map['lat'],
       lng: map['lng'],
       address: map['address'],
+      locationAccuracy: (map['location_accuracy'] is num)
+          ? (map['location_accuracy'] as num).toDouble()
+          : double.tryParse(map['location_accuracy']?.toString() ?? ''),
+      distance: (map['distance'] is num)
+          ? (map['distance'] as num).toDouble()
+          : double.tryParse(map['distance']?.toString() ?? ''),
       deviceId: map['device_id'],
       deviceModel: map['device_model'],
       deviceBrand: map['device_brand'],
@@ -108,6 +120,8 @@ class AttendancePunchModel {
       "lat": lat,
       "lng": lng,
       "address": address,
+      if (locationAccuracy != null) "location_accuracy": locationAccuracy,
+      if (isRemote == 0 && distance != null) "distance": distance,
       "device_id": deviceId,
       "device_model": deviceModel,
       "device_brand": deviceBrand,

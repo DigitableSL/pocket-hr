@@ -287,6 +287,10 @@ class _MobileHomeState extends State<MobileHome>
     final activeLat = useQrLocation ? qrLatitude : latitude;
     final activeLng = useQrLocation ? qrLongitude : longitude;
     final activeAddr = useQrLocation ? (qrAddress ?? address) : address;
+    final double? activeAccuracy =
+        useQrLocation ? (qrAccuracy ?? accuracy) : accuracy;
+    final double? activeDistance =
+        isRemote ? null : (useQrLocation ? qrDistance : null);
 
     final attendanceId = DateTime.now().millisecondsSinceEpoch.toString();
     final model = AttendancePunchModel(
@@ -301,6 +305,8 @@ class _MobileHomeState extends State<MobileHome>
           ? activeLng
           : double.tryParse(activeLng?.toString() ?? '') ?? 0.0,
       address: activeAddr?.toString() ?? '',
+      locationAccuracy: activeAccuracy,
+      distance: activeDistance,
       deviceId: '',
       deviceModel: '',
       deviceBrand: '',
@@ -419,6 +425,7 @@ class _MobileHomeState extends State<MobileHome>
   double? qrLatitude;
   double? qrLongitude;
   double? qrAccuracy;
+  double? qrDistance;
   String? qrAddress;
 
   Future<void> getLocation() async {
@@ -742,6 +749,7 @@ class _MobileHomeState extends State<MobileHome>
               if (dlat == null || dlng == null) return 'Location not available';
 
               final dist = _distanceBetween(dlat, dlng, qlat, qlng);
+              qrDistance = dist;
               if (dist > allowedRadius) {
                 final uname = (storage.getItem('name') ??
                         storage.getItem('username') ??

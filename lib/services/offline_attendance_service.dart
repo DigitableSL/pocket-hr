@@ -69,6 +69,11 @@ class OfflineAttendanceService {
             lastSyncAttempt: Value(punch.lastSyncAttempt),
           ),
         );
+    await _db.updatePunchGeoMeta(
+      punch.attendanceId,
+      locationAccuracy: punch.locationAccuracy,
+      distance: punch.distance,
+    );
     await refreshPendingCount();
   }
 
@@ -81,28 +86,34 @@ class OfflineAttendanceService {
         (tbl) => OrderingTerm.asc(tbl.attendanceId),
       ]);
     final rows = await query.get();
-    return rows.map((r) => AttendancePunchModel(
-          attendanceId: r.attendanceId,
-          uid: r.uid,
-          type: r.type,
-          time: r.time,
-          lat: r.lat,
-          lng: r.lng,
-          address: r.address,
-          deviceId: r.deviceId,
-          deviceModel: r.deviceModel,
-          deviceBrand: r.deviceBrand,
-          devicePlatform: r.devicePlatform,
-          deviceVersion: r.deviceVersion,
-          deviceIdentifier: r.deviceIdentifier,
-          deviceIp: r.deviceIp,
-          batteryLevel: r.batteryLevel,
-          tenant: r.tenant,
-          isRemote: r.isRemote,
-          isSynced: r.isSynced,
-          retryCount: r.retryCount,
-          lastSyncAttempt: r.lastSyncAttempt,
-        )).toList();
+    final geoMeta = await _db.getPendingGeoMeta();
+    return rows.map((r) {
+      final meta = geoMeta[r.attendanceId];
+      return AttendancePunchModel(
+        attendanceId: r.attendanceId,
+        uid: r.uid,
+        type: r.type,
+        time: r.time,
+        lat: r.lat,
+        lng: r.lng,
+        address: r.address,
+        locationAccuracy: meta?['location_accuracy'],
+        distance: meta?['distance'],
+        deviceId: r.deviceId,
+        deviceModel: r.deviceModel,
+        deviceBrand: r.deviceBrand,
+        devicePlatform: r.devicePlatform,
+        deviceVersion: r.deviceVersion,
+        deviceIdentifier: r.deviceIdentifier,
+        deviceIp: r.deviceIp,
+        batteryLevel: r.batteryLevel,
+        tenant: r.tenant,
+        isRemote: r.isRemote,
+        isSynced: r.isSynced,
+        retryCount: r.retryCount,
+        lastSyncAttempt: r.lastSyncAttempt,
+      );
+    }).toList();
   }
 
   Future<void> markSynced(String attendanceId) async {
@@ -171,6 +182,10 @@ class OfflineAttendanceService {
                   latitude: p.lat.toString(),
                   longitude: p.lng.toString(),
                   address: p.address,
+                  accuracy: p.locationAccuracy?.toStringAsFixed(2),
+                  distance: (p.isRemote == 0 && p.distance != null)
+                      ? p.distance!.toStringAsFixed(2)
+                      : null,
                   isRemotePunch: p.isRemote == 1,
                 )
                 .timeout(const Duration(seconds: 8));

@@ -151,6 +151,7 @@ class APIService {
       String? longitude,
       String? address,
       String? accuracy,
+      String? distance,
       bool isRemotePunch = false}) async {
     await storage.ready;
 
@@ -210,6 +211,8 @@ class APIService {
     if (address != null && address.isNotEmpty) data['address'] = address;
     if (accuracy != null && accuracy.isNotEmpty)
       data['location_accuracy'] = accuracy;
+    if (!isRemotePunch && distance != null && distance.isNotEmpty)
+      data['distance'] = distance;
     try {
       final deviceService = DeviceDetailsService();
       final details = await deviceService.collectAll();
