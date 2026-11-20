@@ -32,7 +32,7 @@ All requests routed through `lib/api/custom_http.dart` automatically attach:
 
 **Response Interceptors (every `custom_http` response):**
 1. `TimeValidator.validate(res)` — blocks/warns if device clock drifts > 180s from server UTC.
-2. `AppUpdateHelper.handlePotentialUpdateRequired(statusCode, body)` — prompts force-update if server requires a newer app version.
+2. `AppUpdateHelper.handlePotentialUpdateRequired(statusCode, body, headers)` — reads `X-App-Update-Available`, `X-App-Force-Update`, `X-App-Latest-Version`, `X-App-Min-Version`, and `X-App-Update-Url` (plus HTTP `426`) to show either a non-dismissible force-update sheet or a dismissible once-per-session soft-update sheet pointing to `X-App-Update-Url`.
 3. `SessionValidator.validate(res, url)` — forces logout on `400`/`401`/`419` from `/token` or unrecoverable `401`/`419` without a refresh token.
 
 ---

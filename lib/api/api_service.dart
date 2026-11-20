@@ -21,8 +21,6 @@ import 'package:cn_pocket_hr/config/flavor_config.dart';
 import 'package:cn_pocket_hr/api/api_client.dart';
 import 'package:cn_pocket_hr/services/secure_token_service.dart';
 import 'package:cn_pocket_hr/services/token_refresh_service.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:cn_pocket_hr/helpers/app_update_helper.dart';
 
 class APIService {
   final LocalStorage storage = LocalStorage('pocketHR');
@@ -30,9 +28,6 @@ class APIService {
   String get baseUrl => AppConfig.baseUrl;
   bool qrEnable = true;
 
-  Future<String> _getAppVersion() async {
-    return await ApiClient.getAppVersion();
-  }
 
   // remoteEnable and remoteValue are fetched entirely dynamically through fetchMeProfileWithBearer and retrieved globally.
 
@@ -247,12 +242,9 @@ class APIService {
     try {
       await _injectTenantToBody(data);
     } catch (_) {}
-    final appVer = await _getAppVersion();
     final headers = {
       "Accept": "application/json",
       "Content-Type": "application/x-www-form-urlencoded",
-      "app_version": appVer,
-      "app-version": appVer,
     };
     final oauthToken = SecureTokenService.getOauthTokenSync();
     final accessToken = SecureTokenService.getAccessTokenSync();
@@ -260,7 +252,6 @@ class APIService {
       headers['Oauth-Token'] = oauthToken;
     if (accessToken != null && accessToken.isNotEmpty)
       headers['Authorization'] = 'Bearer $accessToken';
-      headers['app_version'] = await _getAppVersion();
     try {
       debugPrint('[CHECK] POST $url');
       debugPrint('[CHECK] body => $data');
@@ -367,12 +358,9 @@ class APIService {
       await _injectTenantToBody(data);
 
       // Build headers as Map<String, String> and only include keys with non-empty values
-      final appVer = await _getAppVersion();
       final headers = <String, String>{
         "Accept": "application/json",
         "Content-Type": "application/x-www-form-urlencoded",
-        "app_version": appVer,
-        "app-version": appVer,
       };
       // Include both auth forms when available: Bearer for access_token, Oauth-Token for legacy oauth token
       if (accessToken.isNotEmpty)
@@ -449,11 +437,8 @@ class APIService {
       final accessToken = SecureTokenService.getAccessTokenSync();
       final oauthToken = SecureTokenService.getOauthTokenSync();
 
-      final appVer = await _getAppVersion();
       final headers = <String, String>{
         'Accept': 'application/json',
-        'app_version': appVer,
-        'app-version': appVer,
       };
       if (accessToken.isNotEmpty)
         headers['Authorization'] = 'Bearer $accessToken';
@@ -486,11 +471,8 @@ class APIService {
       final accessToken = SecureTokenService.getAccessTokenSync();
       final oauthToken = SecureTokenService.getOauthTokenSync();
 
-      final appVer = await _getAppVersion();
       final headers = <String, String>{
         'Accept': 'application/json',
-        'app_version': appVer,
-        'app-version': appVer,
       };
       if (accessToken.isNotEmpty)
         headers['Authorization'] = 'Bearer $accessToken';
@@ -524,12 +506,9 @@ class APIService {
       final accessToken = SecureTokenService.getAccessTokenSync();
       final oauthToken = SecureTokenService.getOauthTokenSync();
 
-      final appVer = await _getAppVersion();
       final headers = <String, String>{
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'app_version': appVer,
-        'app-version': appVer,
       };
       if (accessToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $accessToken';
@@ -668,13 +647,10 @@ class APIService {
       final baseUrl = "${this.baseUrl}/auth/me";
       final uri = await _uriWithTenant(baseUrl);
 
-      final appVer = await _getAppVersion();
       Map<String, String> headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
         "Authorization": "Bearer $accessToken",
-        "app_version": appVer,
-        "app-version": appVer,
       };
       if (tenant.isNotEmpty) headers['Tenant'] = tenant;
 
@@ -795,12 +771,9 @@ class APIService {
 
       final uri = Uri.parse(url).replace(queryParameters: qParams);
 
-      final appVer = await _getAppVersion();
       final headers = <String, String>{
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'app_version': appVer,
-        'app-version': appVer,
       };
       if (oauthToken.isNotEmpty) headers['Oauth-Token'] = oauthToken;
       if (accessToken.isNotEmpty)
@@ -1000,12 +973,9 @@ class APIService {
       bool includeAccess = true,
       bool includeOauth = true,
     }) async {
-      final appVer = await _getAppVersion();
       final h = <String, String>{
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'app_version': appVer,
-        'app-version': appVer,
       };
 
       if (includeAccess && (accessToken != null && accessToken.isNotEmpty)) {
@@ -1092,12 +1062,9 @@ class APIService {
         bool includeAccess = true,
         bool includeOauth = true,
       }) async {
-        final appVer = await _getAppVersion();
         final h = <String, String>{
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'app_version': appVer,
-          'app-version': appVer,
         };
 
         if (includeAccess && (accessToken != null && accessToken.isNotEmpty)) {
@@ -2334,7 +2301,6 @@ class APIService {
     await storage.ready;
     final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
-    final appVer = await _getAppVersion();
 
     final url = '${baseUrl}/attendance/mark?tenant=$tenant';
 
@@ -2344,8 +2310,6 @@ class APIService {
         'Accept': 'application/json',
         'Authorization': 'Bearer $accessToken',
         'Content-Type': 'application/json',
-        'app_version': appVer,
-        'app-version': appVer,
       },
       body: jsonEncode({
         'userId': userId,
@@ -2362,7 +2326,6 @@ class APIService {
     await storage.ready;
     final accessToken = SecureTokenService.getAccessTokenSync();
     final tenant = storage.getItem('tenant')?.toString() ?? '';
-    final appVer = await _getAppVersion();
 
     final url = '${baseUrl}/teams/my-team/attendance?tenant=$tenant';
 
@@ -2371,8 +2334,6 @@ class APIService {
       headers: {
         'Accept': 'application/json',
         'Authorization': 'Bearer $accessToken',
-        'app_version': appVer,
-        'app-version': appVer,
       },
     );
 
@@ -2385,7 +2346,6 @@ class APIService {
     debugPrint(
         '[$apiName] Response Body: ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
 
-    AppUpdateHelper.handlePotentialUpdateRequired(response.statusCode, response.body);
 
     // If not successful status code
     if (response.statusCode < 200 || response.statusCode >= 300) {

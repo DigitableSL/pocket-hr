@@ -15,7 +15,6 @@ import 'package:localstorage/localstorage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cn_pocket_hr/helpers/app_update_helper.dart';
 
 /// Top-level handler — called when app is terminated or in background.
 /// Must be a top-level function (not a class method).
@@ -577,7 +576,6 @@ class FCMService {
       } else {
         debugPrint(
             'FCMService: token registration failed [${response.statusCode}]: ${response.body}');
-        AppUpdateHelper.handlePotentialUpdateRequired(response.statusCode, response.body);
       }
     } catch (e) {
       debugPrint('FCMService: sendTokenToBackend error: $e');

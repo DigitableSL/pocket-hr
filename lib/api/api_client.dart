@@ -3,41 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'package:cn_pocket_hr/api/custom_http.dart' as http;
 import 'package:localstorage/localstorage.dart';
 import 'package:cn_pocket_hr/api/api_service.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:cn_pocket_hr/helpers/app_update_helper.dart';
 import 'package:cn_pocket_hr/services/secure_token_service.dart';
 
 class ApiClient {
   static final LocalStorage storage = LocalStorage('pocketHR');
-  static String? _cachedAppVersion;
 
-  static Future<String> getAppVersion() async {
-    if (_cachedAppVersion != null && _cachedAppVersion!.isNotEmpty) {
-      return _cachedAppVersion!;
-    }
-    try {
-      final info = await PackageInfo.fromPlatform();
-      final version = info.version;
-      final buildNumber = info.buildNumber;
-      if (buildNumber.isNotEmpty) {
-        _cachedAppVersion = '$version+$buildNumber';
-      } else {
-        _cachedAppVersion = version;
-      }
-    } catch (_) {
-      _cachedAppVersion = '1.0.0+1';
-    }
-    return _cachedAppVersion!;
-  }
-  
   static Future<Map<String, String>> getHeaders({bool isJson = true}) async {
     await storage.ready;
-    final appVer = await getAppVersion();
     final headers = <String, String>{
       'Accept': 'application/json',
       'Content-Type': isJson ? 'application/json' : 'application/x-www-form-urlencoded',
-      'app_version': appVer,
-      'app-version': appVer,
     };
     
     final accessToken = await SecureTokenService.getAccessToken();
@@ -84,9 +59,7 @@ class ApiClient {
     final uri = Uri.parse(url).replace(queryParameters: queryParams);
     final headers = await getHeaders();
     debugPrint('[API GET] $uri');
-    final res = await http.get(uri, headers: headers);
-    AppUpdateHelper.handlePotentialUpdateRequired(res.statusCode, res.body);
-    return res;
+    return await http.get(uri, headers: headers);
   }
 
   static Future<http.Response> post(String url, {Map<String, dynamic>? body, bool isJson = true}) async {
@@ -99,8 +72,6 @@ class ApiClient {
        encodedBody = isJson ? jsonEncode(body) : body.map((k, v) => MapEntry(k, v.toString()));
     }
     
-    final res = await http.post(uri, headers: headers, body: encodedBody, encoding: Encoding.getByName("utf-8"));
-    AppUpdateHelper.handlePotentialUpdateRequired(res.statusCode, res.body);
-    return res;
+    return await http.post(uri, headers: headers, body: encodedBody, encoding: Encoding.getByName("utf-8"));
   }
 }

@@ -187,7 +187,11 @@ Future<origin_http.Response> _sendWithAuthRetry(
   }
 
   TimeValidator.validate(res);
-  AppUpdateHelper.handlePotentialUpdateRequired(res.statusCode, res.body);
+  AppUpdateHelper.handlePotentialUpdateRequired(
+    res.statusCode,
+    res.body,
+    res.headers,
+  );
   SessionValidator.validate(res, url: url);
   return res;
 }
