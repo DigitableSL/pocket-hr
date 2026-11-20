@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as origin_http;
 import 'package:cn_pocket_hr/helpers/time_validator.dart';
@@ -106,12 +107,24 @@ Future<Map<String, String>> _buildHeaders(Map<String, String>? headers) async {
   final deviceHeaders = await _getDeviceHeaders();
   finalHeaders.addAll(deviceHeaders);
 
-  // Automatically attach app-version and app_version to all API headers
+  // Remove legacy version headers so only X-App-Version and X-Platform are sent for version checks
+  finalHeaders.removeWhere((k, _) {
+    final lower = k.toLowerCase();
+    return lower == 'app-version' || lower == 'app_version';
+  });
+
   final appVersion = await _getAppVersion();
-  finalHeaders['app-version'] = appVersion;
-  finalHeaders['app_version'] = appVersion;
+  finalHeaders['X-App-Version'] = appVersion;
+  finalHeaders['X-Platform'] = _getPlatformHeader();
 
   return finalHeaders;
+}
+
+String _getPlatformHeader() {
+  if (kIsWeb) return 'web';
+  if (Platform.isIOS) return 'iphone';
+  if (Platform.isAndroid) return 'android';
+  return Platform.operatingSystem.toLowerCase();
 }
 
 String? _findAuthHeaderKey(Map<String, String>? headers) {

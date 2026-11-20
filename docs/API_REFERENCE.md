@@ -27,7 +27,8 @@ All requests routed through `lib/api/custom_http.dart` automatically attach:
 | `device-id` / `device-identifier` | Android: `Settings.Secure.ANDROID_ID` (via `MainActivity.kt`); iOS: `identifierForVendor` |
 | `device-model`, `device-brand`, `device-platform`, `device-version` | Collected via `DeviceDetailsService` (cached 5 min) |
 | `device-ip`, `battery-level` | Wi-Fi IP & battery % |
-| `app-version`, `app_version` | `<version>+<buildNumber>` from `PackageInfo` |
+| `X-App-Version` | `<version>+<buildNumber>` from `PackageInfo` (e.g. `1.4.2+31`) |
+| `X-Platform` | `android` or `iphone` |
 
 **Response Interceptors (every `custom_http` response):**
 1. `TimeValidator.validate(res)` — blocks/warns if device clock drifts > 180s from server UTC.
