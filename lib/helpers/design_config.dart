@@ -216,7 +216,53 @@ class DesignConfig {
     final Color brandLight = HRColors.brandLight;
     final Color brandDark = HRColors.brandDarkText;
 
+    Map<String, dynamic>? getMeData() {
+      final profile = storage.getItem('me_profile');
+      if (profile is Map) {
+        final d =
+            profile['data'] ?? profile['result'] ?? profile['user'] ?? profile;
+        if (d is Map) return Map<String, dynamic>.from(d);
+      }
+      return null;
+    }
+
+    String readCustomField(Map<String, dynamic>? data, String fieldName) {
+      if (data == null) return '';
+      final cf = data['customfields'];
+      if (cf is List) {
+        for (final item in cf) {
+          if (item is Map &&
+              item['input_name']?.toString() == fieldName &&
+              item['input_value'] != null) {
+            final val = item['input_value'].toString().trim();
+            if (val.isNotEmpty) return val;
+          }
+        }
+      }
+      return '';
+    }
+
     String resolveUserName() {
+      final d = getMeData();
+      if (d != null) {
+        final first = readCustomField(d, 'cf_first_name');
+        final last = readCustomField(d, 'cf_last_name');
+        final fullFromCf = '$first $last'.trim();
+        if (fullFromCf.isNotEmpty) return fullFromCf;
+
+        final nick = readCustomField(d, 'cf_nickname');
+        if (nick.isNotEmpty) return nick;
+
+        final fn = (d['name'] ??
+                d['full_name'] ??
+                d['first_name'] ??
+                d['username'] ??
+                '')
+            .toString()
+            .trim();
+        if (fn.isNotEmpty) return fn;
+      }
+
       final flat = (storage.getItem('name') ??
               storage.getItem('username') ??
               storage.getItem('userName') ??
@@ -224,18 +270,31 @@ class DesignConfig {
           .toString()
           .trim();
       if (flat.isNotEmpty) return flat;
-      final profile = storage.getItem('me_profile');
-      if (profile is Map) {
-        final d = profile['data'] ?? profile['result'] ?? profile['user'] ?? profile;
-        if (d is Map) {
-          final fn = (d['name'] ?? d['full_name'] ?? d['first_name'] ?? '').toString().trim();
-          if (fn.isNotEmpty) return fn;
-        }
-      }
+
       return AppLocalizations.of(context)!.menuText;
     }
 
     String resolveSubtitle() {
+      final d = getMeData();
+      if (d != null) {
+        String designation = readCustomField(d, 'cf_designation');
+        if (designation.isEmpty && d['package'] is Map) {
+          final pkg = d['package'] as Map;
+          if (pkg['tags'] is Map) {
+            designation =
+                (pkg['tags']['designation'] ?? '').toString().trim();
+          }
+        }
+        final epf = readCustomField(d, 'cf_epf_no');
+        final parts = <String>[];
+        if (designation.isNotEmpty) parts.add(designation);
+        if (epf.isNotEmpty) parts.add('EPF $epf');
+        if (parts.isNotEmpty) return parts.join(' • ');
+
+        final email = (d['email'] ?? '').toString().trim();
+        if (email.isNotEmpty) return email;
+      }
+
       final comp = (storage.getItem('company') ??
               storage.getItem('tenant') ??
               FlavorConfig.instance.appName)
