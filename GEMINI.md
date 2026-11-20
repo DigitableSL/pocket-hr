@@ -21,18 +21,20 @@
 4. **Concise responses**: Keep explanations brief and link directly to modified symbols/lines.
 
 ## 3. Architecture Quick Map (Avoid Broad Searches)
-- **API Reference (`docs/API_REFERENCE.md`)**: Complete endpoint, header, auth, and payload map (read this first instead of scanning `lib/api/api_service.dart`; refresh live `GET` schemas with `tooling/probe_apis.py`).
+- **API Reference (`docs/API_REFERENCE.md`)**: Complete endpoint, header (`X-App-Version`, `X-Platform`, update headers), auth, and payload map (read this first instead of scanning `lib/api/api_service.dart`; live PII-free schemas in `docs/api_schemas_live.json`, refreshed via `tooling/probe_apis.py`).
 - **Native MethodChannel (`asia.ceynet.pocket/security`)**:
-  - Android: `android/app/src/main/kotlin/asia/ceynet/human/pocket/MainActivity.kt` (`isDevModeEnabled`, `isMockLocation`, `isAutoTimeEnabled`)
+  - Android: `android/app/src/main/kotlin/asia/ceynet/human/pocket/MainActivity.kt` (`isDevModeEnabled`, `isMockLocation`, `isAutoTimeEnabled`, `playScanTone`, `getAndroidId`)
   - iOS: `ios/Runner/AppDelegate.swift`
 - **Core Services (`lib/services/`)**:
   - `security_service.dart`: Device security & anti-spoofing (`verifyDeviceSecurity`, `verifyPosition`, `startContinuousMonitoring`).
   - `location_service.dart`: Shared GPS position stream & battery-efficient location management.
-  - `offline_attendance_service.dart`: Drift SQLite queue (`lib/database/app_database.dart`) for offline attendance punches.
+  - `offline_attendance_service.dart`: Drift SQLite FIFO queue (`lib/database/app_database.dart`, `schemaVersion = 2` with `location_accuracy` & `distance`) for all attendance punches.
+  - `token_refresh_service.dart`: Process-wide single-flight OAuth token refresh (60s skew buffer, 8s timeout, `sso_client_id` fallback).
   - `fcm_service.dart`: Firebase push notifications & global `navigatorKey`.
   - `sso_service.dart`: OAuth/SSO login flow.
 - **Helpers & Interceptors (`lib/helpers/` & `lib/api/`)**:
-  - `lib/api/custom_http.dart`: HTTP wrapper running `TimeValidator.validate()` and `SessionValidator.validate()` on every API response.
+  - `lib/api/custom_http.dart`: Centralized HTTP wrapper attaching `X-App-Version`/`X-Platform`/device headers, auto-refreshing & retrying `401` once, and running `TimeValidator`, `AppUpdateHelper`, and `SessionValidator` on every response.
+  - `lib/helpers/app_update_helper.dart`: Header-driven hard (`X-App-Force-Update: true` / HTTP `426`) and soft (`X-App-Update-Available: true`) update bottom sheets using `X-App-Update-Url`.
   - `lib/helpers/time_validator.dart`: Checks server HTTP `Date` / `timestamp` vs device UTC clock (180s max drift).
   - `lib/helpers/session_validator.dart`: Handles 401/419 expiration while deferring to silent refresh when `refresh_token` is present.
   - `lib/helpers/logout.dart`: `LogoutHelper.logout()` and `LogoutHelper.forceLogout()` (wipes storage + secure storage).

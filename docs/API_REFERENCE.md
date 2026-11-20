@@ -50,18 +50,18 @@ All requests routed through `lib/api/custom_http.dart` automatically attach:
 ### Attendance
 | Method | Path | Query / Body | Notes & Source |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/attendance/check-in` | Form/JSON: location (`lat`, `lng`), `qr_code?`, `is_remote?`, `device_id`, `device_identifier`, `tenant`, timestamp | Supports offline SQLite queue via `OfflineAttendanceService` (`lib/api/api_service.dart#L160`) |
-| `POST` | `/attendance/check-out` | Same as check-in | Supports offline SQLite queue (`lib/api/api_service.dart#L196`) |
+| `POST` | `/attendance/check-in` | Form: `uid`, `user-id`, `checked_at`, `remote` (`"true"`/`"false"`), `lat`, `lng`, `address?`, `location_accuracy?` (QR & Remote), `distance?` (QR only, omitted on Remote), `tenant`, device telemetry (`device_id` = `ANDROID_ID` / `identifierForVendor`, etc.) | All punches (online & offline) queue in Drift SQLite (`schemaVersion = 2`) via `OfflineAttendanceService` (`lib/api/api_service.dart#L149`) |
+| `POST` | `/attendance/check-out` | Same as check-in (`checkout_at` instead of `checked_at`) | Same SQLite FIFO queue (`lib/api/api_service.dart#L196`) |
 | `GET` | `/attendance/user/{tenant}/{uid}/` | `?tenant=<tenant>&month=<MM>&year=<YYYY>` (falls back to `/attendance/user/{uid}/`) | Monthly attendance records (`lib/api/api_service.dart#L1332`) |
 | `POST` | `/attendance/mark` | `?tenant=<tenant>`, JSON body | Manager/team attendance mark (`lib/api/api_service.dart#L2315`) |
 
 ### Leave Management
 | Method | Path | Query / Body | Notes & Source |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/leave` | `?tenant=<tenant>&userId=<uid>&...` | List user's leave requests (`lib/api/api_service.dart#L785`, `lib/services/leave_service.dart`) |
-| `GET` | `/leave/balance` | `?userId=<uid>&tenant=<tenant>` | Available leave balances per leave type (`lib/api/api_service.dart#L444`) |
-| `GET` | `/leave/apply-eligibility/{uid}` | `?tenant=<tenant>` | Allowed leave date range & payroll lock dates (`lib/api/api_service.dart#L481`) |
-| `POST` | `/leave/store` | Form/JSON: leave type, duration (`full`/`half`/`short`), `from`, `to`, `reason`, `tenant` | Submit leave request (`lib/api/api_service.dart#L299`) |
+| `GET` | `/leave` | `?tenant=<tenant>&userIds=<uid>` | Returns `data[]` (with `half_period`, `short_leave_period`, `session`, `approvedByName`, `deletion_reason`, `slot`), `stats`, and `pagination` (`lib/api/api_service.dart#L785`, `lib/models/hr/leave_model.dart`) |
+| `GET` | `/leave/balance` | `?userId=<uid>&tenant=<tenant>` | Returns `available`, `balance`, `pending`, `used`, and `quota` (including `quota.short`) (`lib/api/api_service.dart#L444`) |
+| `GET` | `/leave/apply-eligibility/{uid}` | `?tenant=<tenant>` | Returns `minDate`, `maxDate`, `restrictedByPayrollLock`, `lockedPayrollEnd`, `configuredDays`, `effectiveDays` (`lib/api/api_service.dart#L481`) |
+| `POST` | `/leave/store` | Form: `leave_type`, `type`, `from_date`, `to_date`, `session` (half-day) or `short_leave_period` (short leave), `leave_title`, `description`, `tenant` | Submit leave request (`lib/api/api_service.dart#L299`) |
 | `POST` | `/leave/{leaveId}/approve` | `?tenant=<tenant>` | Approve team member leave (`lib/api/api_service.dart#L2213`) |
 | `POST` | `/leave/{leaveId}/reject` | `?tenant=<tenant>`, JSON: `{ reason }` | Reject team member leave (`lib/api/api_service.dart#L2236`) |
 
