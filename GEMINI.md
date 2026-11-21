@@ -38,3 +38,7 @@
   - `lib/helpers/time_validator.dart`: Checks server HTTP `Date` / `timestamp` vs device UTC clock (180s max drift).
   - `lib/helpers/session_validator.dart`: Handles 401/419 expiration while deferring to silent refresh when `refresh_token` is present.
   - `lib/helpers/logout.dart`: `LogoutHelper.logout()` and `LogoutHelper.forceLogout()` (wipes storage + secure storage).
+
+## 4. Learning & Industry Terminology Preference (ALWAYS FOLLOW)
+- When proposing designs, explaining architecture, or making code changes, **explicitly name and briefly explain the standard industry terms** for the UI elements, Flutter widgets/patterns, and Android/iOS platform concepts involved (e.g. *Modal Bottom Sheet*, *Progressive Disclosure / Expandable Card*, *BFF (Backend-for-Frontend) endpoint*, *Single-Flight Token Refresh*, *HTTP Interceptor*, *SafeArea / Edge-to-Edge Insets*, *MethodChannel*, *Provisioning Profile*, *Staged Rollout*, *Schema Migration*).
+- Keep explanations concise (1–2 lines per concept) so the user steadily builds practical **Flutter, Android, and iOS** engineering vocabulary alongside every change.
