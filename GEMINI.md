@@ -4,6 +4,7 @@
 - **Stack**: Flutter (Dart `^3.5.4`) mobile & tablet HR/attendance app.
 - **Target Platforms**: **iOS** (`ios/`) and **Android** (`android/`) ONLY. Ignore `linux/`, `macos/`, `windows/`, and `web/`.
 - **Flavors / Tenants**: `domex`, `malkey`, `mahajana`, `digitable` (entry points: `lib/main_<flavor>.dart`, config: `lib/config/flavor_config.dart`).
+- **Linux CI Case-Sensitivity Rule (CRITICAL)**: GitHub Actions builds Android on **Linux (`ubuntu-latest`)**, which has a strictly case-sensitive filesystem (unlike macOS). Always use exact Git-tracked lowercase paths in Dart `import` statements and new file paths (e.g., `package:cn_pocket_hr/screens/...` and `lib/screens/...`, NEVER `lib/Screens/...`), and use LF (`\n`) line endings + forward slashes (`/`).
 
 ## 2. Token Efficiency Rules (CRITICAL)
 1. **Never read entire large files**: Use `StartLine` and `EndLine` (or `grep -n` first) on large files:
