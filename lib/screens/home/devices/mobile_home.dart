@@ -33,8 +33,8 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:cn_pocket_hr/models/hr/location_model.dart';
 import 'package:cn_pocket_hr/models/hr/mobile_summary_model.dart';
-import 'package:cn_pocket_hr/Screens/home/widgets/mobile_summary_dashboard.dart';
-import 'package:cn_pocket_hr/Screens/leave/request_leave_screen.dart';
+import 'package:cn_pocket_hr/screens/home/widgets/mobile_summary_dashboard.dart';
+import 'package:cn_pocket_hr/screens/leave/request_leave_screen.dart';
 import 'package:cn_pocket_hr/providers/connection_provider.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 // import 'package:audioplayers/audioplayers.dart';
@@ -1611,7 +1611,7 @@ class _MobileHomeState extends State<MobileHome>
                     MobileSummaryDashboard(
                       summary: _mobileSummary,
                       isLoading: _loadingSummary,
-                      onScanCheckIn: _onQrTap,
+                      onScanCheckIn: _onScanTap,
                       onApplyLeave: () async {
                         await Navigator.pushNamed(
                             context, HRLeaveRequest.routeName);
