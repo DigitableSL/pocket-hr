@@ -15,6 +15,7 @@ import 'package:cn_pocket_hr/models/hr/attendance_model.dart';
 import 'package:cn_pocket_hr/models/hr/leave_model.dart';
 import 'package:cn_pocket_hr/models/hr/leave_eligibility_model.dart';
 import 'package:cn_pocket_hr/models/hr/me_model.dart';
+import 'package:cn_pocket_hr/models/hr/mobile_summary_model.dart';
 import 'package:cn_pocket_hr/models/hr/todo_model.dart';
 import 'package:cn_pocket_hr/services/device_details_service.dart';
 import 'package:cn_pocket_hr/config/flavor_config.dart';
@@ -2386,5 +2387,56 @@ class APIService {
     }
   }
 
+  /// Fetches the BFF Home summary (`GET /attendance/mobile-summary?date=YYYY-MM-DD`).
+  Future<MobileSummaryModel?> fetchMobileSummary({DateTime? date}) async {
+    try {
+      await storage.ready;
+      await _ensureValidToken();
 
+      final targetDate = date ?? DateTime.now();
+      final dateStr =
+          '${targetDate.year.toString().padLeft(4, '0')}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}';
+
+      final uri = await _uriWithTenant(
+        '$baseUrl/attendance/mobile-summary',
+        {'date': dateStr},
+      );
+
+      final accessToken = SecureTokenService.getAccessTokenSync();
+      final oauthToken = SecureTokenService.getOauthTokenSync();
+      final tenant = await _resolveTenant();
+
+      final headers = <String, String>{
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (accessToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $accessToken';
+      }
+      if (oauthToken.isNotEmpty) {
+        headers['Oauth-Token'] = oauthToken;
+      }
+      if (tenant != null && tenant.isNotEmpty) {
+        headers['Tenant'] = tenant;
+      }
+
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[MOBILE_SUMMARY] status=${response.statusCode}');
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return MobileSummaryModel.fromJson(decoded);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[MOBILE_SUMMARY] error: $e');
+      return null;
+    }
+  }
 }

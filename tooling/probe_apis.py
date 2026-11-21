@@ -147,6 +147,7 @@ def main() -> int:
     now = datetime.datetime.now(datetime.timezone.utc)
     month = f"{now.month:02d}"
     year = str(now.year)
+    today_iso = now.strftime("%Y-%m-%d")
 
     results: dict[str, Any] = {
         "_meta": {
@@ -173,6 +174,7 @@ def main() -> int:
 
     # 2. Remaining read-only GET endpoints
     endpoints: list[tuple[str, str]] = [
+        ("GET /attendance/mobile-summary", f"{base_url}/attendance/mobile-summary?date={today_iso}&tenant={tenant}"),
         ("GET /leave", f"{base_url}/leave?tenant={tenant}" + (f"&userIds={uid}" if uid else "")),
         ("GET /todos", f"{base_url}/todos?tenant={tenant}"),
         ("GET /teams/my-team", f"{base_url}/teams/my-team?tenant={tenant}"),

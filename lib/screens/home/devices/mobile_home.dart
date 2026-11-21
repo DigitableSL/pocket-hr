@@ -32,6 +32,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:cn_pocket_hr/models/hr/location_model.dart';
+import 'package:cn_pocket_hr/models/hr/mobile_summary_model.dart';
+import 'package:cn_pocket_hr/Screens/home/widgets/mobile_summary_dashboard.dart';
+import 'package:cn_pocket_hr/Screens/leave/request_leave_screen.dart';
 import 'package:cn_pocket_hr/providers/connection_provider.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 // import 'package:audioplayers/audioplayers.dart';
@@ -181,6 +184,7 @@ class _MobileHomeState extends State<MobileHome>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) getTime();
       unawaited(OfflineAttendanceService.instance.refreshPendingCount());
+      unawaited(_loadMobileSummary());
       try {
         await storage.ready;
         if (storage.getItem('me_profile') == null) {
@@ -189,6 +193,25 @@ class _MobileHomeState extends State<MobileHome>
         }
       } catch (_) {}
     });
+  }
+
+  MobileSummaryModel? _mobileSummary;
+  bool _loadingSummary = true;
+
+  Future<void> _loadMobileSummary({bool silent = false}) async {
+    if (!silent && mounted && _mobileSummary == null) {
+      setState(() => _loadingSummary = true);
+    }
+    try {
+      final result = await apiService.fetchMobileSummary();
+      if (!mounted) return;
+      setState(() {
+        if (result != null) _mobileSummary = result;
+        _loadingSummary = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingSummary = false);
+    }
   }
 
   void _startClockTimer() {
@@ -203,6 +226,7 @@ class _MobileHomeState extends State<MobileHome>
     if (state == AppLifecycleState.resumed) {
       _startClockTimer();
       unawaited(OfflineAttendanceService.instance.refreshPendingCount());
+      unawaited(_loadMobileSummary(silent: true));
       unawaited(OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true));
       if (streamSubscription != null && streamSubscription!.isPaused) {
         streamSubscription!.resume();
@@ -357,6 +381,7 @@ class _MobileHomeState extends State<MobileHome>
     unawaited(() async {
       debugPrint('[PUNCH STEP 2] 🌐 Device is Online. Triggering SQLite background queue sync...');
       final result = await OfflineAttendanceService.instance.syncPending(ignoreMaxAttempts: true);
+      unawaited(_loadMobileSummary(silent: true));
       if (!mounted) return;
 
       final lastStatus = result['lastStatus'] ?? 0;
@@ -1285,15 +1310,32 @@ class _MobileHomeState extends State<MobileHome>
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             children: [
-                                              const Icon(Icons.wifi_tethering,
-                                                  color: Colors.white,
-                                                  size: 18),
+                                              Icon(
+                                                Icons.wifi_tethering,
+                                                color: ThemeData
+                                                            .estimateBrightnessForColor(
+                                                          FlavorConfig.instance
+                                                              .secondaryColor,
+                                                        ) ==
+                                                        Brightness.light
+                                                    ? const Color(0xFF4A0D14)
+                                                    : Colors.white,
+                                                size: 18,
+                                              ),
                                               const SizedBox(width: 5),
                                               Text(
                                                 AppLocalizations.of(context)!
                                                     .remoteChecking,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: ThemeData
+                                                              .estimateBrightnessForColor(
+                                                            FlavorConfig
+                                                                .instance
+                                                                .secondaryColor,
+                                                          ) ==
+                                                          Brightness.light
+                                                      ? const Color(0xFF4A0D14)
+                                                      : Colors.white,
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.w800,
                                                 ),
@@ -1324,7 +1366,16 @@ class _MobileHomeState extends State<MobileHome>
   Widget data() {
     final connectionProvider = Provider.of<ConnectionProvider>(context);
     final _ = connectionProvider.isOnline;
-    return CustomScrollView(
+    return RefreshIndicator(
+      color: FlavorConfig.instance.primaryColor,
+      onRefresh: () async {
+        await Future.wait([
+          _loadMobileSummary(silent: true),
+          OfflineAttendanceService.instance.refreshPendingCount(),
+        ]);
+      },
+      child: CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: <Widget>[
         SliverAppBar(
           systemOverlayStyle: const SystemUiOverlayStyle(
@@ -1557,28 +1608,42 @@ class _MobileHomeState extends State<MobileHome>
                     //     ],
                     //   ),
                     // ),
-                    Padding(
-                      padding: EdgeInsetsDirectional.only(
-                          top: 10, start: 10, end: 10),
-                      child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Row(children: <Widget>[
-                              Padding(
-                                padding: const EdgeInsets.all(10.0),
-                                child: Text(
-                                  AppLocalizations.of(context)!.rosterText,
-                                  style: TextStyle(
-                                      color: HRColors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20),
+                    MobileSummaryDashboard(
+                      summary: _mobileSummary,
+                      isLoading: _loadingSummary,
+                      onScanCheckIn: _onQrTap,
+                      onApplyLeave: () async {
+                        await Navigator.pushNamed(
+                            context, HRLeaveRequest.routeName);
+                        if (mounted) {
+                          unawaited(_loadMobileSummary(silent: true));
+                        }
+                      },
+                    ),
+                    if (_mobileSummary == null && !_loadingSummary)
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(
+                            top: 10, start: 10, end: 10),
+                        child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Row(children: <Widget>[
+                                Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Text(
+                                    AppLocalizations.of(context)!.rosterText,
+                                    style: TextStyle(
+                                        color: HRColors.black,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20),
+                                  ),
                                 ),
-                              ),
-                              Spacer(), // Defaults to a flex of one.
+                                Spacer(),
+                              ]),
+                              roster()
                             ]),
-                            roster()
-                          ]),
-                    )
+                      ),
+                    const SizedBox(height: 110),
                   ],
                 ),
               ),
@@ -1586,6 +1651,7 @@ class _MobileHomeState extends State<MobileHome>
           ),
         ),
       ], //<Widget>[]
+    ),
     );
   }
 

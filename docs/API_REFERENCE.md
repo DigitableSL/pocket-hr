@@ -54,6 +54,7 @@ All requests routed through `lib/api/custom_http.dart` automatically attach:
 | `POST` | `/attendance/check-out` | Same as check-in (`checkout_at` instead of `checked_at`) | Same SQLite FIFO queue (`lib/api/api_service.dart#L196`) |
 | `GET` | `/attendance/user/{tenant}/{uid}/` | `?tenant=<tenant>&month=<MM>&year=<YYYY>` (falls back to `/attendance/user/{uid}/`) | Monthly attendance records (`lib/api/api_service.dart#L1332`) |
 | `POST` | `/attendance/mark` | `?tenant=<tenant>`, JSON body | Manager/team attendance mark (`lib/api/api_service.dart#L2315`) |
+| `GET` | `/attendance/mobile-summary` | `?date=YYYY-MM-DD&tenant=<tenant>` | BFF Home summary: `user_profile`, `date_info`, `shift`, `today_punches`, `timeline_progress`, `checkout_countdown`, `punctuality`, `alerts[]`, `quick_metrics`, `calendar` (`lib/api/api_service.dart#L2390`, `lib/models/hr/mobile_summary_model.dart`) |
 
 ### Leave Management
 | Method | Path | Query / Body | Notes & Source |
