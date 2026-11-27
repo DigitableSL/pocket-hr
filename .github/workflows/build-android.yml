@@ -58,6 +58,11 @@ on:
         required: false
         default: ''
         type: string
+      build_number:
+        description: 'Optional explicit build number / versionCode (leave empty for auto)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   prepare:
@@ -92,6 +97,7 @@ jobs:
             UPLOAD_FIREBASE="${{ github.event.inputs.upload_to_firebase }}"
             FIREBASE_GROUPS="${{ github.event.inputs.firebase_groups }}"
             FIREBASE_NOTES="${{ github.event.inputs.firebase_release_notes }}"
+            TAG_BUILD_NUM="${{ github.event.inputs.build_number }}"
           elif [[ "${{ github.ref }}" == refs/tags/android-* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             # Supported tag formats:

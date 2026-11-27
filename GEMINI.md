@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 - **Stack**: Flutter (Dart `^3.5.4`) mobile & tablet HR/attendance app.
-- **Target Platforms**: **iOS** (`ios/`) and **Android** (`android/`) ONLY. Ignore `linux/`, `macos/`, `windows/`, and `web/`.
+- **Target Platforms & Devices**: **iOS (`ios/` — iPhone & iPad, `TARGETED_DEVICE_FAMILY = "1,2"`) and Android (`android/` — smartphones & tablets)**. Ignore `linux/`, `macos/`, `windows/`, and `web/`.
 - **Flavors / Tenants**: `domex`, `malkey`, `mahajana`, `digitable` (entry points: `lib/main_<flavor>.dart`, config: `lib/config/flavor_config.dart`).
 - **Linux CI Case-Sensitivity Rule (CRITICAL)**: GitHub Actions builds Android on **Linux (`ubuntu-latest`)**, which has a strictly case-sensitive filesystem (unlike macOS). Always use exact Git-tracked lowercase paths in Dart `import` statements and new file paths (e.g., `package:cn_pocket_hr/screens/...` and `lib/screens/...`, NEVER `lib/Screens/...`), and use LF (`\n`) line endings + forward slashes (`/`).
 
