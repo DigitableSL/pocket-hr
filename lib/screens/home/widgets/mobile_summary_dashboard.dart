@@ -63,12 +63,14 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
           const SizedBox(height: 12),
 
           // 3. Monthly Summary Card (Present / Absent / Leave Left + OT & Short Leave)
-          _buildMonthlySummaryCard(summary.quickMetrics, brandPrimary, brandLight),
+          _buildMonthlySummaryCard(
+              summary.quickMetrics, brandPrimary, brandLight),
           const SizedBox(height: 12),
 
           // 4. Expandable My Roster Calendar (Current Week <-> Full Month)
           if (summary.calendar.days.isNotEmpty)
-            _buildRosterCard(context, summary.calendar, brandPrimary, brandLight),
+            _buildRosterCard(
+                context, summary.calendar, brandPrimary, brandLight),
         ],
       ),
     );
@@ -101,7 +103,8 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
   Widget _buildAlertCard(MobileHomeAlert alert, Color brandPrimary) {
     final isDanger = alert.severity.toLowerCase() == 'danger' ||
         alert.severity.toLowerCase() == 'error';
-    final bgColor = isDanger ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
+    final bgColor =
+        isDanger ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB);
     final borderColor =
         isDanger ? const Color(0xFFFECACA) : const Color(0xFFFDE68A);
     final accentColor =
@@ -222,8 +225,7 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
     }
   }
 
-  Widget _buildTodayStatusCard(
-      MobileSummaryModel summary, Color brandPrimary) {
+  Widget _buildTodayStatusCard(MobileSummaryModel summary, Color brandPrimary) {
     final punches = summary.todayPunches;
     final progress = summary.timelineProgress;
     final countdown = summary.checkoutCountdown;
@@ -244,12 +246,11 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
         ? punches.lastCheckOutFormatted!
         : '-- : --';
 
-    final shiftRange =
-        (shift.startTime.isNotEmpty && shift.endTime.isNotEmpty)
-            ? '${shift.startTime} – ${shift.endTime}'
-            : (shift.isHoliday && shift.holidayName.isNotEmpty
-                ? shift.holidayName
-                : (shift.isOffDay ? 'Off Day' : ''));
+    final shiftRange = (shift.startTime.isNotEmpty && shift.endTime.isNotEmpty)
+        ? '${shift.startTime} – ${shift.endTime}'
+        : (shift.isHoliday && shift.holidayName.isNotEmpty
+            ? shift.holidayName
+            : (shift.isOffDay ? 'Off Day' : ''));
 
     final footerText = countdown.isOvertime && countdown.overtimeMinutes > 0
         ? 'Overtime: +${countdown.overtimeMinutes} mins'
@@ -667,6 +668,9 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
         ? dowHeaders.indexOf(allDays.first.dayOfWeek.toUpperCase())
         : 0;
     final leadingBlanks = firstDowIdx > 0 ? firstDowIdx : 0;
+    final totalSlots = leadingBlanks + allDays.length;
+    final monthRowCount = (totalSlots + 6) ~/ 7;
+    final legendItems = _buildLegendItems(allDays, brandPrimary);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -756,8 +760,10 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
+            clipBehavior: Clip.hardEdge,
             child: _showFullCalendar
                 ? Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Row(
                         children: dowHeaders
@@ -778,31 +784,34 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
                             .toList(),
                       ),
                       const SizedBox(height: 6),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: leadingBlanks + allDays.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 7,
-                          mainAxisSpacing: 4,
-                          crossAxisSpacing: 4,
-                          childAspectRatio: 0.92,
+                      for (int r = 0; r < monthRowCount; r++)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            bottom: r == monthRowCount - 1 ? 0 : 4,
+                          ),
+                          child: Row(
+                            children: List.generate(7, (c) {
+                              final dayIdx = r * 7 + c - leadingBlanks;
+                              if (dayIdx < 0 || dayIdx >= allDays.length) {
+                                return const Expanded(child: SizedBox.shrink());
+                              }
+                              final day = allDays[dayIdx];
+                              return Expanded(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 2),
+                                  child: _buildDayCell(
+                                    day: day,
+                                    showDow: false,
+                                    isSelected: selectedDay?.day == day.day,
+                                    brandPrimary: brandPrimary,
+                                    brandLight: brandLight,
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
                         ),
-                        itemBuilder: (ctx, idx) {
-                          if (idx < leadingBlanks) {
-                            return const SizedBox.shrink();
-                          }
-                          final day = allDays[idx - leadingBlanks];
-                          return _buildDayCell(
-                            day: day,
-                            showDow: false,
-                            isSelected: selectedDay?.day == day.day,
-                            brandPrimary: brandPrimary,
-                            brandLight: brandLight,
-                          );
-                        },
-                      ),
                     ],
                   )
                 : Row(
@@ -825,6 +834,46 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
                         .toList(),
                   ),
           ),
+
+          // Color-Dot Legend / Key
+          if (legendItems.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              children: legendItems.map((item) {
+                final isLight = item.color.computeLuminance() > 0.78;
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: item.color,
+                        shape: BoxShape.circle,
+                        border: isLight
+                            ? Border.all(
+                                color: Colors.black.withOpacity(0.18),
+                                width: 0.6,
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.label,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: HRColors.brandGreyText,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
 
           // Selected Day Detail Footer
           const SizedBox(height: 10),
@@ -934,7 +983,8 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
       statusText = p == 'morning' ? 'Half · Morning' : 'Half · Evening';
     }
 
-    final hasIn = day.firstCheckIn != null && day.firstCheckIn!.trim().isNotEmpty;
+    final hasIn =
+        day.firstCheckIn != null && day.firstCheckIn!.trim().isNotEmpty;
     final hasOut =
         day.lastCheckOut != null && day.lastCheckOut!.trim().isNotEmpty;
     final rightText = (hasIn || hasOut)
@@ -975,5 +1025,65 @@ class _MobileSummaryDashboardState extends State<MobileSummaryDashboard> {
         ),
       ],
     );
+  }
+
+  List<({String label, Color color})> _buildLegendItems(
+    List<MobileCalendarDay> allDays,
+    Color brandPrimary,
+  ) {
+    final Map<String, ({String label, Color color})> seen = {};
+
+    for (final day in allDays) {
+      String rawLabel = day.statusLabel.trim();
+      if (rawLabel.isEmpty && day.status.trim().isNotEmpty) {
+        rawLabel = day.status
+            .trim()
+            .split('_')
+            .where((w) => w.isNotEmpty)
+            .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+            .join(' ');
+      }
+      if (rawLabel.isEmpty) continue;
+
+      final key = rawLabel.toLowerCase();
+      if (key == 'today' || seen.containsKey(key)) continue;
+
+      final color = MobileSummaryModel.parseHexColor(
+        day.badgeColorHex,
+        const Color(0xFF94A3B8),
+      );
+      seen[key] = (label: rawLabel, color: color);
+    }
+
+    const priorityOrder = [
+      'present',
+      'late',
+      'absent',
+      'half day',
+      'short leave',
+      'on leave',
+      'leave',
+      'holiday',
+      'off day',
+      'off',
+      'scheduled',
+      'upcoming',
+    ];
+
+    final items = seen.values.toList()
+      ..sort((a, b) {
+        final ai = priorityOrder.indexOf(a.label.toLowerCase());
+        final bi = priorityOrder.indexOf(b.label.toLowerCase());
+        if (ai != -1 && bi != -1) return ai.compareTo(bi);
+        if (ai != -1) return -1;
+        if (bi != -1) return 1;
+        return a.label.compareTo(b.label);
+      });
+
+    if (allDays.any((d) => d.isToday)) {
+      items.add((label: 'Today', color: brandPrimary));
+    }
+
+    return items;
   }
 }
