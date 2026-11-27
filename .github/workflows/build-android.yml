@@ -43,6 +43,21 @@ on:
           - alpha
           - beta
           - production
+      upload_to_firebase:
+        description: 'Upload APK to Firebase App Distribution (requires FIREBASE_SERVICE_ACCOUNT_JSON secret)'
+        required: false
+        default: false
+        type: boolean
+      firebase_groups:
+        description: 'Firebase tester group alias(es), comma-separated (e.g. digitable, qa)'
+        required: false
+        default: 'digitable'
+        type: string
+      firebase_release_notes:
+        description: 'Optional release notes shown to Firebase testers'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   prepare:
@@ -54,6 +69,9 @@ jobs:
       format: ${{ steps.config.outputs.format }}
       deploy: ${{ steps.config.outputs.deploy }}
       track: ${{ steps.config.outputs.track }}
+      upload_firebase: ${{ steps.config.outputs.upload_firebase }}
+      firebase_groups: ${{ steps.config.outputs.firebase_groups }}
+      firebase_release_notes: ${{ steps.config.outputs.firebase_release_notes }}
       package_name: ${{ steps.config.outputs.package_name }}
       build_name: ${{ steps.config.outputs.build_name }}
       build_number: ${{ steps.config.outputs.build_number }}
@@ -71,6 +89,9 @@ jobs:
             FORMAT="${{ github.event.inputs.build_format }}"
             DEPLOY="${{ github.event.inputs.deploy_to_play_store }}"
             TRACK="${{ github.event.inputs.play_store_track }}"
+            UPLOAD_FIREBASE="${{ github.event.inputs.upload_to_firebase }}"
+            FIREBASE_GROUPS="${{ github.event.inputs.firebase_groups }}"
+            FIREBASE_NOTES="${{ github.event.inputs.firebase_release_notes }}"
           elif [[ "${{ github.ref }}" == refs/tags/android-* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             # Supported tag formats:
@@ -81,6 +102,9 @@ jobs:
             TENANT=$(echo "$TAG" | sed -E 's/^android-([a-z]+)-v.*/\1/')
             FORMAT="appbundle"
             DEPLOY="true"
+            UPLOAD_FIREBASE="false"
+            FIREBASE_GROUPS="digitable"
+            FIREBASE_NOTES=""
             if [[ "$TAG" == *-prod ]]; then
               TRACK="production"
               TAG_CORE="${TAG%-prod}"
@@ -104,10 +128,18 @@ jobs:
             FORMAT="apk"
             DEPLOY="false"
             TRACK="internal"
+            UPLOAD_FIREBASE="false"
+            FIREBASE_GROUPS="digitable"
+            FIREBASE_NOTES=""
           fi
 
           # If deploying to Play Store, ensure appbundle is built
           if [ "$DEPLOY" = "true" ] && [ "$FORMAT" = "apk" ]; then
+            FORMAT="both"
+          fi
+
+          # If uploading to Firebase App Distribution, ensure APK is built
+          if [ "$UPLOAD_FIREBASE" = "true" ] && [ "$FORMAT" = "appbundle" ]; then
             FORMAT="both"
           fi
 
@@ -152,6 +184,9 @@ jobs:
           echo "format=$FORMAT" >> $GITHUB_OUTPUT
           echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
           echo "track=$TRACK" >> $GITHUB_OUTPUT
+          echo "upload_firebase=$UPLOAD_FIREBASE" >> $GITHUB_OUTPUT
+          echo "firebase_groups=${FIREBASE_GROUPS:-digitable}" >> $GITHUB_OUTPUT
+          echo "firebase_release_notes=$FIREBASE_NOTES" >> $GITHUB_OUTPUT
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "build_name=$BUILD_NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
@@ -226,6 +261,46 @@ jobs:
           name: apk-${{ needs.prepare.outputs.tenant }}-arm64-v8a-release-b${{ github.run_number }}
           path: build/app/outputs/flutter-apk/app-arm64-v8a-${{ needs.prepare.outputs.tenant }}-release.apk
           if-no-files-found: error
+
+      - name: Resolve Firebase App ID & Verify Secret
+        id: firebase_cfg
+        if: needs.prepare.outputs.upload_firebase == 'true'
+        env:
+          FIREBASE_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          CUSTOM_NOTES: ${{ needs.prepare.outputs.firebase_release_notes }}
+        run: |
+          if [ -z "$FIREBASE_JSON" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT_JSON secret is missing in the '${{ needs.prepare.outputs.tenant }}' GitHub Environment."
+            exit 1
+          fi
+          GS_FILE="android/app/src/${{ needs.prepare.outputs.tenant }}/google-services.json"
+          APP_ID=$(jq -r --arg pkg "${{ needs.prepare.outputs.package_name }}" \
+            '.client[] | select(.client_info.android_client_info.package_name == $pkg) | .client_info.mobilesdk_app_id' \
+            "$GS_FILE" | head -n1)
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            APP_ID=$(jq -r '.client[0].client_info.mobilesdk_app_id' "$GS_FILE")
+          fi
+          if [ -z "$APP_ID" ] || [ "$APP_ID" = "null" ]; then
+            echo "::error::Could not resolve mobilesdk_app_id from $GS_FILE"
+            exit 1
+          fi
+          NOTES="$CUSTOM_NOTES"
+          if [ -z "$NOTES" ]; then
+            COMMIT_MSG=$(git log -1 --pretty=%s)
+            NOTES="v${{ needs.prepare.outputs.build_name }}+${{ needs.prepare.outputs.build_number }} (${{ needs.prepare.outputs.tenant }}) - $COMMIT_MSG"
+          fi
+          echo "app_id=$APP_ID" >> $GITHUB_OUTPUT
+          echo "release_notes=$NOTES" >> $GITHUB_OUTPUT
+
+      - name: Upload APK to Firebase App Distribution
+        if: needs.prepare.outputs.upload_firebase == 'true'
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ steps.firebase_cfg.outputs.app_id }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: ${{ needs.prepare.outputs.firebase_groups }}
+          releaseNotes: ${{ steps.firebase_cfg.outputs.release_notes }}
+          file: build/app/outputs/flutter-apk/app-arm64-v8a-${{ needs.prepare.outputs.tenant }}-release.apk
 
       - name: Build Release App Bundle (AAB) for Play Store
         if: needs.prepare.outputs.format == 'appbundle' || needs.prepare.outputs.format == 'both'
